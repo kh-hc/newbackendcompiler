@@ -62,10 +62,10 @@ object ast {
     case object Pair extends PairElemType
 
     sealed trait Expr
-    case class IntExpr(value: IntLiteral) extends Expr
-    case class BoolExpr(value: BoolLiteral) extends Expr
-    case class CharExpr(value: CharLiteral) extends Expr
-    case class StrExpr(value: StringLiteral) extends Expr
+    case class IntExpr(value: Int) extends Expr
+    case class BoolExpr(value: BoolL) extends Expr
+    case class CharExpr(value: Char) extends Expr
+    case class StrExpr(value: String) extends Expr
     case class PairExpr(value: PairLiteral) extends Expr
     case class IdentifierExpr(id: Identifier) extends Expr
     case class ArrayElemExpr(value: ArrayElemLiteral) extends Expr
@@ -98,11 +98,6 @@ object ast {
     case class Identifier(id: String)
     
     case class ArrayElemLiteral(id: Identifer, position: List[Expr])
-    
-    case class IntLiteral(value: Int)
-    case class BoolLiteral(value: Bool) 
-    case class CharLiteral(value: Char) 
-    case class StringLiteral(value: String)
 
     case class ArrayLiteral(value: List[Expr])
 
