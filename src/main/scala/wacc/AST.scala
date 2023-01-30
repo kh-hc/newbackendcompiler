@@ -66,37 +66,45 @@ object AbstractSyntaxTree {
 
     sealed trait Expr
     case class IntExpr(value: Int) extends Expr
-    case class BoolExpr(value: BooL) extends Expr
+    case class BoolExpr(value: Boolean) extends Expr
     case class CharExpr(value: Char) extends Expr
     case class StrExpr(value: String) extends Expr
     case class PairExpr(value: PairLiteral) extends Expr
     case class IdentifierExpr(id: Identifier) extends Expr
     case class ArrayElemExpr(value: ArrayElemLiteral) extends Expr
-    case class UnaryOpExpr(op: UnaryOp, expr: Expr) extends Expr
-    case class BinOpExpr(exprLeft: Expr, op: BinOp, exprRight: Expr) extends Expr
     case class ParenExpr(expr: Expr) extends Expr
 
-    sealed trait UnaryOp 
-    case object NotOp extends UnaryOp with ParserBridge0[UnaryOp]
-    case object NegateOp extends UnaryOp with ParserBridge0[UnaryOp]
-    case object LenOp extends UnaryOp with ParserBridge0[UnaryOp]
-    case object OrdOp extends UnaryOp with ParserBridge0[UnaryOp]
-    case object ChrOp extends UnaryOp with ParserBridge0[UnaryOp]
+    // precedence implemented using number Expr
+    // lower number = higher precendece but 0 is used for no precedence i.e. for unary
+    sealed trait Expr0 extends Expr1
+    sealed trait Expr1 extends Expr2
+    sealed trait Expr2 extends Expr3
+    sealed trait Expr3 extends Expr4
+    sealed trait Expr4 extends Expr5
+    sealed trait Expr5 extends Expr6
+    sealed trait Expr6 extends Expr
 
-    sealed trait BinOp
-    case object Add extends BinOp with ParserBridge0[BinOp]
-    case object Div extends BinOp with ParserBridge0[BinOp]
-    case object Mod extends BinOp with ParserBridge0[BinOp]
-    case object Mul extends BinOp with ParserBridge0[BinOp]
-    case object Sub extends BinOp with ParserBridge0[BinOp]
-    case object GreaterThan extends BinOp with ParserBridge0[BinOp]
-    case object GreaterOrEqualThan extends BinOp with ParserBridge0[BinOp]
-    case object LessThan extends BinOp with ParserBridge0[BinOp]
-    case object LessOrEqualThan extends BinOp with ParserBridge0[BinOp]
-    case object Equal extends BinOp with ParserBridge0[BinOp]
-    case object NotEqual extends BinOp with ParserBridge0[BinOp]
-    case object And extends BinOp with ParserBridge0[BinOp]
-    case object Or extends BinOp with ParserBridge0[BinOp]
+    // Unary Operators
+    case class NotOp(expr: Expr0) extends Expr0
+    case class NegateOp(expr: Expr0) extends Expr0
+    case class LenOp(expr: Expr0) extends Expr0
+    case class OrdOp(expr: Expr0) extends Expr0
+    case class ChrOp(expr: Expr0) extends Expr0
+
+    // note left-associativitiy so typing is (B,A) => B
+    case class Div(exprLeft: Expr1, exprRight: Expr0) extends Expr1
+    case class Mod(exprLeft: Expr1, exprRight: Expr0) extends Expr1
+    case class Mul(exprLeft: Expr1, exprRight: Expr0) extends Expr1
+    case class Add(exprLeft: Expr2, exprRight: Expr1) extends Expr2
+    case class Sub(exprLeft: Expr2, exprRight: Expr1) extends Expr2
+    case class GreaterThan(exprLeft: Expr3, exprRight: Expr2) extends Expr3
+    case class GreaterOrEqualThan(exprLeft: Expr3, exprRight: Expr2) extends Expr3
+    case class LessThan(exprLeft: Expr3, exprRight: Expr2) extends Expr3
+    case class LessOrEqualThan(exprLeft: Expr3, exprRight: Expr2) extends Expr3
+    case class Equal(exprLeft: Expr4, exprRight: Expr4) extends Expr4
+    case class NotEqual(exprLeft: Expr4, exprRight: Expr4) extends Expr4
+    case class And(exprLeft: Expr5, exprRight: Expr4) extends Expr5
+    case class Or(exprLeft: Expr6, exprRight: Expr5) extends Expr6
 
     case class Identifier(id: String)
     
@@ -156,10 +164,28 @@ object AbstractSyntaxTree {
     object PairExpr extends ParserBridge1[PairLiteral, Expr]
     object IdentifierExpr extends ParserBridge1[IntLiteral, Expr]
     object ArrayElemExpr extends ParserBridge1[ArrayElemLiteral, Expr]
-    object UnaryOpExpr extends ParserBridge2[UnaryOp, Expr, Expr]
-    object BinOpExpr extends ParserBridge3[Expr, BinOp, Expr, Expr]
     object ParenExpr extends ParserBridge1[Expr, Expr]
-    
+    // Unary operations
+    object NotOp extends ParserBridge1[Expr0, Expr0]
+    object NegateOp extends ParserBridge1[Expr0, Expr0]
+    object LenOp extends ParserBridge1[Expr0, Expr0]
+    object OrdOp extends ParserBridge1[Expr0, Expr0]
+    object ChrOp extends ParserBridge1[Expr0, Expr0]
+    // Binary operations
+    object Div extends ParserBridge2[Expr1, Expr0, Expr1] 
+    object Mod extends ParserBridge2[Expr1, Expr0, Expr1] 
+    object Mul extends ParserBridge2[Expr1, Expr0, Expr1] 
+    object Add extends ParserBridge2[Expr2, Expr1, Expr2] 
+    object Sub extends ParserBridge2[Expr2, Expr1, Expr2] 
+    object GreaterThan extends ParserBridge2[Expr3, Expr2, Expr3]
+    object GreaterOrEqualThan extends ParserBridge2[Expr3, Expr2, Expr3]
+    object LessThan extends ParserBridge2[Expr3, Expr2, Expr3]
+    object LessOrEqualThan extends ParserBridge2[Expr3, Expr2, Expr3]
+    object Equal extends ParserBridge2[Expr4, Expr4, Expr4]
+    object NotEqual extends ParserBridge2[Expr4, Expr4, Expr4]
+    object And extends ParserBridge2[Expr5, Expr4, Expr5]
+    object Or extends ParserBridge2[Expr6, Expr5, Expr6]
+        
     object Identifier extends ParserBridge1[String, Identifier]
     
     object ArrayElemLiteral extends ParserBridge2[Identifier, List[Expr], ArrayElemLiteral]
