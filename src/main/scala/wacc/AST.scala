@@ -1,6 +1,6 @@
 package wacc
 
-object AbstractSyntaxTree {
+object abstractSyntaxTree {
     import parsley.genericbridges._
 
     case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)
