@@ -1,16 +1,16 @@
 package wacc
 
-import parsley.Parsley
-
 object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
+
     private val waccDesc = LexicalDesc(
         NameDesc.plain.copy(
             identifierStart = Unicode(c => Character.isLetter(c) || c == '_'),
             identifierLetter = Unicode(c => Character.isLetterOrDigit(c) || c == '_'),
         ),
+
         SymbolDesc.plain.copy(
             hardKeywords = Set("begin", "end", "is", "skip", "read", "free",
                                 "return", "exit", "print", "println", "if", 
@@ -22,6 +22,7 @@ object lexer {
                                 "+", ">", ">=", "<", "<=", "==", "!=", "&&",
                                 "||"),
         ),
+
         numeric.NumericDesc.plain.copy(),
         text.TextDesc.plain.copy(
             excapeSequence = text.ExcapeDesc.plain.copy(
@@ -45,10 +46,24 @@ object lexer {
                 ),
             )
         ),
+
         SpaceDesc.plain.copy(
             commentLine = "#",
             space = Basic(c => c == ' ' || c == '\t'),
         )
     )
+
     private val lexer = new Lexer(waccDesc)
+
+    val IDENT = lexer.lexeme.names.identifier()
+
+    val INT = lexer.lexeme.numeric.integer.number
+    val STRING = lexer.lexeme.text.string.ascii
+    val CHAR = lexer.lexeme.text.character.ascii
+
+    val NEWLINE = lexer.lexeme(newline).void
+
+    def fully[A](p: Parsley[A]) = lexer.fully(p)
+
+    val implicits = lexer.lexeme.symbol.implicits
 }
