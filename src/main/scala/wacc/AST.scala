@@ -1,5 +1,7 @@
 package wacc
 
+import parsley.Parsley
+
 object abstractSyntaxTree {
     import parsley.genericbridges._
 
@@ -9,12 +11,12 @@ object abstractSyntaxTree {
     case class ParamFunc(t: Type, id: Identifier, params: Paramlist, body: StatementUnit) extends FunctionUnit
     case class NiladicFunc(t: Type, id: Identifier, body: StatementUnit)
 
-    case class Paramlist(paramlist: List[Param])
+    case class ParamList(paramlist: List[Param])
 
     case class Param(t: Type, id: Identifier)
 
     sealed trait StatementUnit
-    case object SkipStat extends StatementUnit with ParserBridge0[SkipStat]
+    case object SkipStat extends StatementUnit with ParserBridge0[StatementUnit]
     case class AssignStat(t: Type, id: Identifier, value: Rvalue) extends StatementUnit
     case class ReassignStat(left: Lvalue, right: Rvalue) extends StatementUnit
     case class ReadStat(value: Lvalue) extends StatementUnit
@@ -30,7 +32,7 @@ object abstractSyntaxTree {
 
     sealed trait Lvalue
     case class IdentLeft(id: Identifier) extends Lvalue
-    case class ArrayElemLeft(elem: ArrayElem) extends Lvalue
+    case class ArrayElemLeft(elem: ArrayElemLiteral) extends Lvalue
     case class PairElemLeft(elem: PairElem) extends Lvalue
 
     sealed trait PairElem
@@ -62,7 +64,7 @@ object abstractSyntaxTree {
     sealed trait PairElemType
     case class BasePairElem(t: BaseType) extends PairElemType
     case class ArrayPairElem(t: ArrayType) extends PairElemType
-    case object Pair extends PairElemType with ParserBridge0[Pair]
+    case object Pair extends PairElemType with ParserBridge0[PairElemType]
 
     sealed trait Expr
     case class IntExpr(value: Int) extends Expr
@@ -110,9 +112,11 @@ object abstractSyntaxTree {
     
     case class ArrayElemLiteral(id: Identifer, position: List[Expr])
 
-    case class ArrayLiteral(value: List[Expr])
+    sealed trait Literal
 
-    case object PairLiteral extends ParserBridge0[PairLiteral]
+    case class ArrayLiteral(value: List[Expr]) extends Literal
+
+    case object PairLiteral extends Literal with ParserBridge0[Literal]
 
     // Bridges
 
@@ -153,7 +157,7 @@ object abstractSyntaxTree {
 
     object ArrayType extends ParserBridge1[Type, ArrayType]
 
-    object PairType extends ParserBridge1[PairElemType, PairElemType, PairType]
+    object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
     object BasePairElem extends ParserBridge1[BaseType, PairElemType]
     object ArrayPairElem extends ParserBridge1[ArrayType, PairElemType]
     
@@ -190,5 +194,5 @@ object abstractSyntaxTree {
     
     object ArrayElemLiteral extends ParserBridge2[Identifier, List[Expr], ArrayElemLiteral]
 
-    object ArrayLiteral extends ParserBridge1[List[Expr], ArrayLiteral]
+    object ArrayLiteral extends ParserBridge1[List[Expr], Literal]
 }

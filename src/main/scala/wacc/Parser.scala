@@ -1,8 +1,11 @@
 package wacc
 
+import parsley.Parsley
+
 object parser {
     import parsley.combinator._
     import parsley.character.string
+    import parsley.Parsley.attempt
 
     import lexer._
     import implicits.implicitSymbol
@@ -19,8 +22,8 @@ object parser {
                                                 <|> attempt("(" *> expression <* ")"))
 
     private lazy val expressionOps: Parsley[Expr] = 
-        precedence(SOps(InfixR)(Or <# "||") +:
-                   SOps(InfixR)(And <# "&&") +:
+        precedence(SOps(InfixL)(Or <# "||") +:
+                   SOps(InfixL)(And <# "&&") +:
                    SOps(InfixN)(NotEqual <# "!=", Equal <# "==") +:
                    SOps(InfixN)(LessOrEqualThan <# "<=", LessThan <# "<",
                                 GreaterOrEqualThan <# ">=", GreaterThan <# ">") +:

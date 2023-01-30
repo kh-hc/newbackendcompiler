@@ -1,9 +1,13 @@
 package wacc
 
+import parsley.Parsley
+import scala.language.implicitConversions
+
 object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
+    import parsley.character.newline
 
     private val waccDesc = LexicalDesc(
         NameDesc.plain.copy(
@@ -25,7 +29,7 @@ object lexer {
 
         numeric.NumericDesc.plain.copy(),
         text.TextDesc.plain.copy(
-            excapeSequence = text.ExcapeDesc.plain.copy(
+            escapeSequences = text.EscapeDesc.plain.copy(
                 literals = Set('\'','\"','\\'),
                 singleMap = Map('0' -> 0x00,
                                 'b' -> 0x08, 
@@ -55,7 +59,7 @@ object lexer {
 
     private val lexer = new Lexer(waccDesc)
 
-    val IDENT = lexer.lexeme.names.identifier()
+    val IDENT = lexer.lexeme.names.identifier
 
     val INT = lexer.lexeme.numeric.integer.number
     val STRING = lexer.lexeme.text.string.ascii
