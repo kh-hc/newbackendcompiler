@@ -23,8 +23,7 @@ object lexer {
                                 "bool", "char", "string", "pair", "len", 
                                 "ord", "chr", "true", "false", "null"),
             hardOperators = Set("!", "-", "len", "ord", "chr", "*", "/", "%",
-                                "+", ">", ">=", "<", "<=", "==", "!=", "&&",
-                                "||"),
+                                "+", ">", ">=", "<", "<=", "==", "!=", "&&", "||"),
         ),
 
         numeric.NumericDesc.plain.copy(),
