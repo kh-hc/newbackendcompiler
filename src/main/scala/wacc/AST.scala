@@ -34,7 +34,10 @@ object abstractSyntaxTree {
 
     sealed trait Lvalue extends ASTNode
 
-    case class PairElem(fst: Lvalue, snd: Lvalue) extends Lvalue with Rvalue
+    sealed trait PairElem extends Rvalue with Lvalue
+
+    case class PairElemFst(pair: Lvalue) extends PairElem
+    case class PairElemSnd(pair: Lvalue) extends PairElem
 
     sealed trait Rvalue extends ASTNode
     sealed trait Expr extends Rvalue
@@ -127,12 +130,14 @@ object abstractSyntaxTree {
     object ScopeStat extends ParserBridge1[StatementUnit, ScopeStat]
     object SeqStat extends ParserBridge2[StatementUnit, StatementUnit, SeqStat]
 
-    object PairElem extends ParserBridge2[Lvalue, Lvalue, PairElem]
+    object PairElemFst extends ParserBridge1[Lvalue, PairElemFst]
+    object PairElemSnd extends ParserBridge1[Lvalue, PairElemSnd]
 
-    object ArrayLiteral extends ParserBridge1[List[Expr], Rvalue]
-    object NewPair extends ParserBridge2[Expr, Expr, Rvalue]
-    object ParamCall extends ParserBridge2[Identifier, ArgList, Rvalue]
-    object NiladicCall extends ParserBridge1[Identifier, Rvalue]
+
+    object ArrayLiteral extends ParserBridge1[List[Expr], ArrayLiteral]
+    object NewPair extends ParserBridge2[Expr, Expr, NewPair]
+    object ParamCall extends ParserBridge2[Identifier, ArgList, Call]
+    object NiladicCall extends ParserBridge1[Identifier, Call]
 
     object ArgList extends ParserBridge1[List[Expr], ArgList]
 
