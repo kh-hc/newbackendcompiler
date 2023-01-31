@@ -61,7 +61,7 @@ object abstractSyntaxTree {
     case class ArrayPairElem(t: ArrayType) extends PairElemType
     case object NestedPair extends PairElemType with ParserBridge0[PairElemType]
 
-    case class IntExpr(value: Int) extends Expr
+    case class IntExpr(value: BigInt) extends Expr
     case class BoolExpr(value: Boolean) extends Expr
     case class CharExpr(value: Char) extends Expr
     case class StrExpr(value: String) extends Expr
@@ -127,7 +127,7 @@ object abstractSyntaxTree {
     object ScopeStat extends ParserBridge1[StatementUnit, ScopeStat]
     object SeqStat extends ParserBridge2[StatementUnit, StatementUnit, SeqStat]
 
-    object PairElem extends ParserBridge2[Lvalue, Lvalue, PairElem]
+    object PairElem extends ParserBridge2[Lvalue, Lvalue, Either[Lvalue, Rvalue]]
 
     object ArrayLiteral extends ParserBridge1[List[Expr], Rvalue]
     object NewPair extends ParserBridge2[Expr, Expr, Rvalue]
@@ -142,13 +142,13 @@ object abstractSyntaxTree {
     object BasePairElem extends ParserBridge1[BaseType, PairElemType]
     object ArrayPairElem extends ParserBridge1[ArrayType, PairElemType]
     
-    object IntExpr extends ParserBridge1[Int, Expr]
+    object IntExpr extends ParserBridge1[BigInt, Expr]
     object BoolExpr extends ParserBridge1[Boolean, Expr]
     object CharExpr extends ParserBridge1[Char, Expr]
     object StrExpr extends ParserBridge1[String, Expr]
-    object ArrayElem extends ParserBridge2[Identifier, List[Expr], Expr]
+    object ArrayElem extends ParserBridge2[Identifier, List[Expr], Either[Lvalue, Expr]]
     object ParenExpr extends ParserBridge1[Expr, Expr]
-    object Identifer extends ParserBridge1[String, Identifier]
+    object Identifer extends ParserBridge1[String, Either[Lvalue, Expr]]
     // Unary operations
     object NotOp extends ParserBridge1[Expr0, Expr0]
     object NegateOp extends ParserBridge1[Expr0, Expr0]

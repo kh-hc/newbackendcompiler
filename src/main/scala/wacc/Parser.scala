@@ -10,16 +10,16 @@ object parser {
     import lexer._
     import implicits.implicitSymbol
     import abstractSyntaxTree._
-    import parsley.expr.{precedence, SOps, InfixL, InfixR, InfixN, Prefix, Atoms}
+    import parsley.expr.{precedence, SOps, InfixL, InfixN, Prefix, Atoms}
     
-    private val atomicExpression = (IntExpr(INT)
-                                                <|> StrExpr(STRING)
-                                                <|> CharExpr(CHAR)
-                                                <|> attempt(string("true") #> BoolExpr(true))
-                                                <|> attempt(string("false") #> BoolExpr(false))
-                                                <|> attempt(string("null") #> PairExpr(PairLiteral))
-                                                <|> IdentifierExpr(Identifer(IDENT))
-                                                <|> attempt("(" *> expression <* ")"))
+    private val atomicExpression: Parsley[Expr] = (IntExpr(INT)
+                                    <|> StrExpr(STRING)
+                                    <|> CharExpr(CHAR)
+                                    <|> attempt(string("true") #> BoolExpr(true))
+                                    <|> attempt(string("false") #> BoolExpr(false))
+                                    <|> attempt(string("null") #> PairLiteral)
+                                    <|> Identifer(IDENT)
+                                    <|> attempt("(" *> expression <* ")"))
 
     private lazy val expressionOps: Parsley[Expr] = 
         precedence(SOps(InfixL)(Or <# "||") +:
