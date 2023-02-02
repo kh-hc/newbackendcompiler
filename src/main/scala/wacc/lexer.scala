@@ -9,12 +9,11 @@ object lexer {
     import parsley.token.predicate.{Unicode, Basic}
     import parsley.character.newline
 
-    private val waccDesc = LexicalDesc(
+    private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
             identifierStart = Unicode(c => Character.isLetter(c) || c == '_'),
             identifierLetter = Unicode(c => Character.isLetterOrDigit(c) || c == '_'),
         ),
-
         SymbolDesc.plain.copy(
             hardKeywords = Set("begin", "end", "is", "skip", "read", "free",
                                 "return", "exit", "print", "println", "if", 
@@ -24,7 +23,6 @@ object lexer {
             hardOperators = Set("!", "-", "len", "ord", "chr", "*", "/", "%",
                                 "+", ">", ">=", "<", "<=", "==", "!=", "&&", "||"),
         ),
-
         numeric.NumericDesc.plain.copy(),
         text.TextDesc.plain.copy(
             escapeSequences = text.EscapeDesc.plain.copy(
@@ -45,10 +43,9 @@ object lexer {
                 ),
             )
         ),
-
         SpaceDesc.plain.copy(
             commentLine = "#",
-            space = Basic(c => c == ' ' || c == '\t'),
+            space = Basic(c => c == ' ' || c == '\t' || c == '\n'),
         )
     )
 
