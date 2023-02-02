@@ -1,0 +1,25 @@
+# This file is a template, and might need editing before it works on your project.
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Scala.gitlab-ci.yml
+
+# Official OpenJDK Java image. Look for the different tagged releases at
+# https://hub.docker.com/_/openjdk/ . A Java image is not required
+# but an image with a JVM speeds up the build a bit.
+image: hseeberger/scala-sbt:8u222_1.3.5_2.13.1
+
+stages:
+    - build
+    - test
+
+build:
+    stage: build
+    script: sbt clean compile
+
+test:
+    stage: test
+    script: sbt test
