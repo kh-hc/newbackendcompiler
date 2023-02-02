@@ -20,8 +20,7 @@ object lexer {
                                 "return", "exit", "print", "println", "if", 
                                 "then", "else", "fi", "while", "do", "done", 
                                 "fst", "snd", "newpair", "call", "int", 
-                                "bool", "char", "string", "pair", "len", 
-                                "ord", "chr", "true", "false", "null"),
+                                "bool", "char", "string", "pair", "true", "false", "null"),
             hardOperators = Set("!", "-", "len", "ord", "chr", "*", "/", "%",
                                 "+", ">", ">=", "<", "<=", "==", "!=", "&&", "||"),
         ),
@@ -35,10 +34,7 @@ object lexer {
                                 't' -> 0x09, 
                                 'n' -> 0x0a, 
                                 'f' -> 0x0c, 
-                                'r' -> 0x0d, 
-                                '\"' -> 0x22, 
-                                '\'' -> 0x27,
-                                '\\' -> 0x5c
+                                'r' -> 0x0d
                 ),
                 multiMap = Map("NUL" -> 0x00,
                                 "BS" -> 0x08, 

@@ -60,8 +60,7 @@ object abstractSyntaxTree {
 
     case class PairType(left: PairElemType, right: PairElemType) extends Type
     sealed trait PairElemType
-    case class BasePairElem(t: BaseType) extends PairElemType
-    case class ArrayPairElem(t: ArrayType) extends PairElemType
+    case class PairElemTypeT(t: Type) extends PairElemType
     case object NestedPair extends PairElemType with ParserBridge0[PairElemType]
 
     case class IntExpr(value: BigInt) extends Expr0
@@ -145,8 +144,7 @@ object abstractSyntaxTree {
     object ArrayType extends ParserBridge1[Type, ArrayType]
 
     object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
-    object BasePairElem extends ParserBridge1[BaseType, PairElemType]
-    object ArrayPairElem extends ParserBridge1[ArrayType, PairElemType]
+    object PairElemTypeT extends ParserBridge1[Type, PairElemType]
     
     object IntExpr extends ParserBridge1[BigInt, Expr0]
     object BoolExpr extends ParserBridge1[Boolean, Expr0]
