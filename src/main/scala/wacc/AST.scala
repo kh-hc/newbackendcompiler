@@ -120,6 +120,7 @@ object abstractSyntaxTree {
 
     object AssignStat extends ParserBridge3[Type, Identifier, Rvalue, AssignStat]
     object ReassignStat extends ParserBridge2[Lvalue, Rvalue, ReassignStat]
+    object ReadStat extends ParserBridge1[Lvalue, ReadStat]
     object FreeStat extends ParserBridge1[Expr, FreeStat]
     object ReturnStat extends ParserBridge1[Expr, ReturnStat]
     object ExitStat extends ParserBridge1[Expr, ExitStat]
