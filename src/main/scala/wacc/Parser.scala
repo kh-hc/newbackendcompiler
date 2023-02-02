@@ -39,8 +39,11 @@ object parser {
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
-    lazy val seqStat = SeqStat(sepBy1(statement, ";"))
-    private lazy val statement: Parsley[StatementUnit] = ((attempt("skip" #> SkipStat
+    private lazy val statement: Parsley[StatementUnit] = attempt(atomStatement <~ notFollowedBy(";")) <|> seqStat
+
+    private lazy val seqStat: Parsley[StatementUnit] = SeqStat(sepBy1(atomStatement, ";"))
+
+    private lazy val atomStatement: Parsley[StatementUnit] = ("skip" #> SkipStat
         <|> AssignStat(tiepe, identifier, "=" *> rValue)
         <|> ReassignStat(lValue, "=" *> rValue)
         <|> ReadStat("read" *> lValue)
@@ -51,7 +54,7 @@ object parser {
         <|> PrintlnStat("println" *> expression)
         <|> IfStat("if" *> expression, "then" *> statement, "else" *> statement <* "fi")
         <|> WhileStat("while" *> expression, "do" *> statement <* "done")
-        <|> ScopeStat("begin" *> statement <* "end")) <~ notFollowedBy(";"))
+        <|> ScopeStat("begin" *> statement <* "end")
     )
 
     private lazy val lValue: Parsley[Lvalue] = identifier <|> arrayElem <|> pairElem
@@ -91,7 +94,8 @@ object parser {
 
     private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
 
-    private val program: Parsley[WACCprogram] = WACCprogram("begin" *> many(func), statement <* "end")
+    private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
 
     def parse[Err: ErrorBuilder](input: String): Result[Err, WACCprogram] = program.parse(input)
+
 }
