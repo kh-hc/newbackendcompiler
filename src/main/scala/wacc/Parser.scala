@@ -39,6 +39,7 @@ object parser {
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
+    lazy val seqStat = SeqStat(sepBy1(statement, ";"))
     private lazy val statement: Parsley[StatementUnit] = ((attempt("skip" #> SkipStat
         <|> AssignStat(tiepe, identifier, "=" *> rValue)
         <|> ReassignStat(lValue, "=" *> rValue)
@@ -51,7 +52,6 @@ object parser {
         <|> IfStat("if" *> expression, "then" *> statement, "else" *> statement <* "fi")
         <|> WhileStat("while" *> expression, "do" *> statement <* "done")
         <|> ScopeStat("begin" *> statement <* "end")) <~ notFollowedBy(";"))
-        <|> SeqStat(sepBy1(statement, ";"))
     )
 
     private lazy val lValue: Parsley[Lvalue] = identifier <|> arrayElem <|> pairElem
