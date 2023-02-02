@@ -4,7 +4,7 @@ import parsley.Parsley
 
 object parser {
     import parsley.combinator._
-    import parsley.Parsley.attempt
+    import parsley.Parsley.{attempt, notFollowedBy}
     import parsley.Result
     import parsley.errors.ErrorBuilder
     import Parsley.LazyParsley
@@ -14,13 +14,10 @@ object parser {
     import abstractSyntaxTree._
     import parsley.expr.{precedence, SOps, InfixL, InfixN, Prefix, Atoms}
 
-    def parse[Err: ErrorBuilder](input: String): Result[Err, WACCprogram] = program.parse(input)
-
     private val identifier: Parsley[Identifier] = Identifier(IDENT)
 
     private val arrayElem: Parsley[ArrayElem] = ArrayElem(identifier, many("[" *> expression <* "]"))
 
-    private val program: Parsley[WACCprogram] = WACCprogram("begin" *> many(func), statement <* "end")
 
     private lazy val pairElemType: Parsley[PairElemType] = "pair" #> NestedPair <|> PairElemTypeT(tiepe)
     
@@ -33,16 +30,16 @@ object parser {
 
     private val arrayType: Parsley[ArrayType] = ArrayType(~tiepe <~ "[]")
 
-    private val tiepe: Parsley[Type] = baseType <|> pairType <|> arrayType
+    private val tiepe: Parsley[Type] = (attempt((baseType <|> pairType) <~ notFollowedBy("["))) <|> arrayType
 
-    private val func: Parsley[FunctionUnit] = (ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
+    private lazy val func: Parsley[FunctionUnit] = (ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
         <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end"))
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy1(param, ","))
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
-    private val statement: Parsley[StatementUnit] = ("skip" #> SkipStat
+    private lazy val statement: Parsley[StatementUnit] = ((attempt("skip" #> SkipStat
         <|> AssignStat(tiepe, identifier, "=" *> rValue)
         <|> ReassignStat(lValue, "=" *> rValue)
         <|> ReadStat("read" *> lValue)
@@ -53,8 +50,8 @@ object parser {
         <|> PrintlnStat("println" *> expression)
         <|> IfStat("if" *> expression, "then" *> statement, "else" *> statement <* "fi")
         <|> WhileStat("while" *> expression, "do" *> statement <* "done")
-        <|> ScopeStat("begin" *> statement <* "end")
-        <|> SeqStat(statement, ";" *> statement)
+        <|> ScopeStat("begin" *> statement <* "end")) <~ notFollowedBy(";"))
+        <|> SeqStat(sepBy1(statement, ";"))
     )
 
     private lazy val lValue: Parsley[Lvalue] = identifier <|> arrayElem <|> pairElem
@@ -93,4 +90,8 @@ object parser {
             Atoms(atomicExpression))
 
     private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
+
+    private val program: Parsley[WACCprogram] = WACCprogram("begin" *> many(func), statement <* "end")
+
+    def parse[Err: ErrorBuilder](input: String): Result[Err, WACCprogram] = program.parse(input)
 }

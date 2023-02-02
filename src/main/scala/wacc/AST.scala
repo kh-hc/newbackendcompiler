@@ -30,7 +30,7 @@ object abstractSyntaxTree {
     case class IfStat(cond: Expr, ifStat: StatementUnit, elseStat: StatementUnit) extends StatementUnit
     case class WhileStat(cond: Expr, body: StatementUnit) extends StatementUnit
     case class ScopeStat(body: StatementUnit) extends StatementUnit
-    case class SeqStat(left: StatementUnit, right: StatementUnit) extends StatementUnit
+    case class SeqStat(statements: List[StatementUnit]) extends StatementUnit
 
     sealed trait Lvalue extends ASTNode
 
@@ -128,7 +128,7 @@ object abstractSyntaxTree {
     object IfStat extends ParserBridge3[Expr, StatementUnit, StatementUnit, IfStat]
     object WhileStat extends ParserBridge2[Expr, StatementUnit, WhileStat]
     object ScopeStat extends ParserBridge1[StatementUnit, ScopeStat]
-    object SeqStat extends ParserBridge2[StatementUnit, StatementUnit, SeqStat]
+    object SeqStat extends ParserBridge1[List[StatementUnit], SeqStat]
 
     object PairElemFst extends ParserBridge1[Lvalue, PairElemFst]
     object PairElemSnd extends ParserBridge1[Lvalue, PairElemSnd]
