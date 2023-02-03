@@ -13,8 +13,6 @@ object parser {
     import abstractSyntaxTree._
     import parsley.expr.{precedence, SOps, InfixL, InfixN, Prefix, Atoms, chain}
 
-    import parsley.debug.DebugCombinators
-
     private val identifier: Parsley[Identifier] = Identifier(IDENT)
 
     private val arrayElem: Parsley[ArrayElem] = ArrayElem(identifier, many("[" *> expression <* "]"))
@@ -28,11 +26,7 @@ object parser {
 
     private val pairType: Parsley[PairType] = PairType("pair" *> "(" *> pairElemType <* ",", pairElemType <* ")")
 
-    //private val arrayType: Parsley[ArrayType] = ArrayType(tiepe <~ "[]")
-
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
-
-    //private val tiepe: Parsley[Type] = precedence(Ops(Postfix)(ArrayType <# "[]") +: Atoms(baseType <|> pairType))
 
     private lazy val func: Parsley[FunctionUnit] = attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
         <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end"))
@@ -41,13 +35,9 @@ object parser {
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
+    private lazy val statement: Parsley[StatementUnit] = SeqStat(sepBy1(atomStatement, ";"))
 
-    //private lazy val statement: Parsley[StatementUnit] = attempt(seqStat) <|> atomStatement.debug("Attempting atoms")
-    //private lazy val statement: Parsley[StatementUnit] = attempt(atomStatement.debug("Attempting atoms") <~ notFollowedBy(";")) <|> seqStat
-
-    private lazy val statement: Parsley[StatementUnit] = SeqStat(sepBy1(atomStatement, ";").debug("Sequencing"))
-
-    private lazy val atomStatement: Parsley[StatementUnit] = ("skip".debug("Skip") #> SkipStat
+    private lazy val atomStatement: Parsley[StatementUnit] = ("skip" #> SkipStat
         <|> AssignStat(tiepe, identifier, "=" *> rValue)
         <|> ReassignStat(lValue, "=" *> rValue)
         <|> ReadStat("read" *> lValue)
@@ -98,7 +88,7 @@ object parser {
 
     private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
 
-    private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func).debug("Processing Functions"), statement.debug("Processing Statements)") <* "end"))
+    private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
 
     def parse(input: File) = program.parseFromFile(input).get
 

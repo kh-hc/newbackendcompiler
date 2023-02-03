@@ -6,13 +6,11 @@ import java.io.File
 
 object Main {
     def main(args: Array[String]): Unit = {
-        println("Hello WACC_46!")
-
         val myFile = new File(args.head)
 
         parse(myFile) match {
-            case Success(x) => println(s"${args.head} = $x")
-            case Failure(msg) => println(msg)
+            case Success(x) => return 0
+            case Failure(msg) => return 100
         }
     }
 }
