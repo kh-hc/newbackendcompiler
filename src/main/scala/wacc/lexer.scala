@@ -38,22 +38,19 @@ object lexer {
         ),
         SpaceDesc.plain.copy(
             commentLine = "#",
-            space = Basic(c => c == ' ' || c == '\t' || c == '\n'),
+            space = Basic(_.isWhitespace),
         )
     )
 
     private val lexer = new Lexer(waccDesc)
 
-    val IDENT = lexer.lexeme.names.identifier.debug("Ident")
+    val IDENT = lexer.lexeme.names.identifier
 
-    val INT = lexer.lexeme.numeric.integer.number.debug("Int")
-    val STRING = lexer.lexeme.text.string.ascii.debug("String")
-    val CHAR = lexer.lexeme.text.character.ascii.debug("Char")
+    val INT = lexer.lexeme.numeric.integer.number
+    val STRING = lexer.lexeme.text.string.ascii
+    val CHAR = lexer.lexeme.text.character.ascii
 
     def fully[A](p: Parsley[A]) = lexer.fully(p)
 
-    // val implicits = lexer.lexeme.symbol.implicits
-    object  implicits{
-        implicit def implicitSymbol (str: String) = lexer.lexeme.symbol (str).debug(str)
-    }
+    val implicits = lexer.lexeme.symbol.implicits
 }

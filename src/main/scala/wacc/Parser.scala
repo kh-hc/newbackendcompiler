@@ -66,7 +66,7 @@ object parser {
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
         
-    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy(expression, ",") <* "]").debug("arr lit")
+    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy(expression, ",") <* "]")
 
     private val atomicExpression: Parsley[Expr0] = (IntExpr(INT)
         <|> StrExpr(STRING)
