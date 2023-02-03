@@ -63,15 +63,12 @@ class WaccTestSuite extends AnyFlatSpec {
       for (file <- subs) {
         // If it's a file, add to the array of files
         if (isAFile(file)) {
-          files = files :+ file
+          files = files :+ s"$subdirectory/$file"
         } else {
-          // If it's not a file then it's a directory - get all the files in the
-          // directory and append to the array of files
-          // Note that by observation, there are no further directories from
-          // this point
-          val finalFiles = getDirectoryContents(path + subdirectory + "/" + file)
+          // Deals with one layer of nesting
+          val finalFiles = getDirectoryContents(s"$path$subdirectory/$file")
           for (f <- finalFiles) {
-            files = files :+ f
+            files = files :+ s"$subdirectory/$file/$f"
           }
         }
       }
