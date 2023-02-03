@@ -4,7 +4,7 @@ import parsley.Parsley
 
 object parser {
     import parsley.combinator._
-    import parsley.Parsley.attempt
+    import parsley.Parsley.{attempt, lookAhead}
     import parsley.io.ParseFromIO
     import java.io.File
     import parsley.debug.DebugCombinators
@@ -29,7 +29,7 @@ object parser {
 
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
 
-    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
+    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", ("is" *> statement <* "end").filter(stats => endsInRet(stats)))
         <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end")))
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, ","))
@@ -95,5 +95,16 @@ object parser {
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
 
     def parse(input: File) = program.parseFromFile(input).get
+
+    def endsInRet(input: StatementUnit) : Boolean = input match {
+        case WhileStat(_, body) => endsInRet(body)
+        case ScopeStat(body) => endsInRet(body)
+        case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && endsInRet(elseStat)
+        case ScopeStat(body) => endsInRet(body)
+        case SeqStat(statements) => endsInRet(statements.last)
+        case ExitStat(expr) => true
+        case ReturnStat(expr) => true
+        case _ => false
+    }
 
 }
