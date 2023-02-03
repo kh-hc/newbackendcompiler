@@ -25,8 +25,9 @@ class WaccTestSuite extends AnyFlatSpec {
     // Loop through the test files and check our parser works
     for (file <- testFiles) {
         val filePath = directoryPath + file
-        (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {
-            val testCorrect = run(filePath) == exitCode
+        val testCorrect = run(filePath) == exitCode
+        
+        (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {   
             assert(testCorrect)
         }
         if (testCorrect) {
@@ -35,7 +36,7 @@ class WaccTestSuite extends AnyFlatSpec {
         filesTested += 1
     }
 
-    println(s"\n\n$filesPassed/$filesPassed tests passed\n\n")
+    println(s"\n\n$filesPassed/$filesTested tests passed\n\n")
   }
   
   // Returns the contents of a directory as a List[String]
