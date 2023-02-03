@@ -4,7 +4,7 @@ import parsley.Parsley
 
 object parser {
     import parsley.combinator._
-    import parsley.Parsley.{attempt}
+    import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
     import java.io.File
     import parsley.debug.DebugCombinators
@@ -52,7 +52,9 @@ object parser {
         <|> ScopeStat("begin" *> statement <* "end")
     )
 
-    private lazy val lValue: Parsley[Lvalue] = identifier <|> arrayElem <|> pairElem
+    //chain.postfix(baseType <|> pairType, ArrayType <# "[]")
+    //private lazy val lValue: Parsley[Lvalue] = chain.right(identifier <|> pairElem, ArrayElem "[" *> expression <* "]")
+    private lazy val lValue: Parsley[Lvalue] = arrayElem <|> (pairElem <|> identifier)
 
     private lazy val rValue: Parsley[Rvalue] = (expression
         <|> arrayLiteral
@@ -64,7 +66,7 @@ object parser {
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
         
-    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy1(expression, ",") <* "]")
+    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy(expression, ",") <* "]").debug("arr lit")
 
     private val atomicExpression: Parsley[Expr0] = (IntExpr(INT)
         <|> StrExpr(STRING)
@@ -72,6 +74,7 @@ object parser {
         <|> "true" #> BoolExpr(true)
         <|> "false" #> BoolExpr(false)
         <|> "null" #> PairLiteral
+        <|> arrayElem
         <|> identifier
         <|> ParenExpr("(" *> expression <* ")"))
 

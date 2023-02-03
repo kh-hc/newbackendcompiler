@@ -7,7 +7,7 @@ object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
-    import parsley.character.newline
+    import parsley.debug._
 
     private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
@@ -34,13 +34,6 @@ object lexer {
                                 'f' -> 0x0c, 
                                 'r' -> 0x0d
                 ),
-                multiMap = Map("NUL" -> 0x00,
-                                "BS" -> 0x08, 
-                                "TAB" -> 0x09, 
-                                "LF" -> 0x0a, 
-                                "FF" -> 0x0c, 
-                                "CR" -> 0x0d
-                ),
             )
         ),
         SpaceDesc.plain.copy(
@@ -51,15 +44,16 @@ object lexer {
 
     private val lexer = new Lexer(waccDesc)
 
-    val IDENT = lexer.lexeme.names.identifier
+    val IDENT = lexer.lexeme.names.identifier.debug("Ident")
 
-    val INT = lexer.lexeme.numeric.integer.number
-    val STRING = lexer.lexeme.text.string.ascii
-    val CHAR = lexer.lexeme.text.character.ascii
-
-    val NEWLINE = lexer.lexeme(newline).void
+    val INT = lexer.lexeme.numeric.integer.number.debug("Int")
+    val STRING = lexer.lexeme.text.string.ascii.debug("String")
+    val CHAR = lexer.lexeme.text.character.ascii.debug("Char")
 
     def fully[A](p: Parsley[A]) = lexer.fully(p)
 
-    val implicits = lexer.lexeme.symbol.implicits
+    // val implicits = lexer.lexeme.symbol.implicits
+    object  implicits{
+        implicit def implicitSymbol (str: String) = lexer.lexeme.symbol (str).debug(str)
+    }
 }

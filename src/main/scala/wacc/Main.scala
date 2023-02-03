@@ -10,7 +10,7 @@ object Main {
 
         parse(myFile) match {
             case Success(x) => sys.exit(0)
-            case Failure(x) => sys.exit(100)
+            case Failure(x) => println(x)
         }
     }
 }
