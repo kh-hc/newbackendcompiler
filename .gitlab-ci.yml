@@ -1,0 +1,11 @@
+image: hseeberger/scala-sbt:8u222_1.3.5_2.13.1
+
+build:
+    stage: build
+    script: sbt clean compile
+
+test:
+    stage: test
+    script: 
+        - sbt compile assembly
+        - sbt test

@@ -30,11 +30,14 @@ object abstractSyntaxTree {
     case class IfStat(cond: Expr, ifStat: StatementUnit, elseStat: StatementUnit) extends StatementUnit
     case class WhileStat(cond: Expr, body: StatementUnit) extends StatementUnit
     case class ScopeStat(body: StatementUnit) extends StatementUnit
-    case class SeqStat(left: StatementUnit, right: StatementUnit) extends StatementUnit
+    case class SeqStat(statements: List[StatementUnit]) extends StatementUnit
 
     sealed trait Lvalue extends ASTNode
 
-    case class PairElem(fst: Lvalue, snd: Lvalue) extends Lvalue with Rvalue
+    sealed trait PairElem extends Rvalue with Lvalue
+
+    case class PairElemFst(pair: Lvalue) extends PairElem
+    case class PairElemSnd(pair: Lvalue) extends PairElem
 
     sealed trait Rvalue extends ASTNode
     sealed trait Expr extends Rvalue
@@ -57,18 +60,17 @@ object abstractSyntaxTree {
 
     case class PairType(left: PairElemType, right: PairElemType) extends Type
     sealed trait PairElemType
-    case class BasePairElem(t: BaseType) extends PairElemType
-    case class ArrayPairElem(t: ArrayType) extends PairElemType
+    case class PairElemTypeT(t: Type) extends PairElemType
     case object NestedPair extends PairElemType with ParserBridge0[PairElemType]
 
-    case class IntExpr(value: BigInt) extends Expr
-    case class BoolExpr(value: Boolean) extends Expr
-    case class CharExpr(value: Char) extends Expr
-    case class StrExpr(value: String) extends Expr
-    case object PairLiteral extends Expr with ParserBridge0[Expr]
-    case class ArrayElem(id: Identifier, position: List[Expr]) extends Expr with Lvalue
-    case class ParenExpr(expr: Expr) extends Expr
-    case class Identifier(id: String) extends Expr with Lvalue
+    case class IntExpr(value: BigInt) extends Expr0
+    case class BoolExpr(value: Boolean) extends Expr0
+    case class CharExpr(value: Char) extends Expr0
+    case class StrExpr(value: String) extends Expr0
+    case object PairLiteral extends Expr0 with ParserBridge0[Expr0]
+    case class ArrayElem(id: Identifier, position: List[Expr]) extends Expr0 with Lvalue
+    case class ParenExpr(expr: Expr) extends Expr0
+    case class Identifier(id: String) extends Expr0 with Lvalue
 
 
     // precedence implemented using number Expr
@@ -117,6 +119,7 @@ object abstractSyntaxTree {
 
     object AssignStat extends ParserBridge3[Type, Identifier, Rvalue, AssignStat]
     object ReassignStat extends ParserBridge2[Lvalue, Rvalue, ReassignStat]
+    object ReadStat extends ParserBridge1[Lvalue, ReadStat]
     object FreeStat extends ParserBridge1[Expr, FreeStat]
     object ReturnStat extends ParserBridge1[Expr, ReturnStat]
     object ExitStat extends ParserBridge1[Expr, ExitStat]
@@ -125,30 +128,31 @@ object abstractSyntaxTree {
     object IfStat extends ParserBridge3[Expr, StatementUnit, StatementUnit, IfStat]
     object WhileStat extends ParserBridge2[Expr, StatementUnit, WhileStat]
     object ScopeStat extends ParserBridge1[StatementUnit, ScopeStat]
-    object SeqStat extends ParserBridge2[StatementUnit, StatementUnit, SeqStat]
+    object SeqStat extends ParserBridge1[List[StatementUnit], SeqStat]
 
-    object PairElem extends ParserBridge2[Lvalue, Lvalue, Either[Lvalue, Rvalue]]
+    object PairElemFst extends ParserBridge1[Lvalue, PairElemFst]
+    object PairElemSnd extends ParserBridge1[Lvalue, PairElemSnd]
 
-    object ArrayLiteral extends ParserBridge1[List[Expr], Rvalue]
-    object NewPair extends ParserBridge2[Expr, Expr, Rvalue]
-    object ParamCall extends ParserBridge2[Identifier, ArgList, Rvalue]
-    object NiladicCall extends ParserBridge1[Identifier, Rvalue]
+
+    object ArrayLiteral extends ParserBridge1[List[Expr], ArrayLiteral]
+    object NewPair extends ParserBridge2[Expr, Expr, NewPair]
+    object ParamCall extends ParserBridge2[Identifier, ArgList, Call]
+    object NiladicCall extends ParserBridge1[Identifier, Call]
 
     object ArgList extends ParserBridge1[List[Expr], ArgList]
 
     object ArrayType extends ParserBridge1[Type, ArrayType]
 
     object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
-    object BasePairElem extends ParserBridge1[BaseType, PairElemType]
-    object ArrayPairElem extends ParserBridge1[ArrayType, PairElemType]
+    object PairElemTypeT extends ParserBridge1[Type, PairElemType]
     
-    object IntExpr extends ParserBridge1[BigInt, Expr]
-    object BoolExpr extends ParserBridge1[Boolean, Expr]
-    object CharExpr extends ParserBridge1[Char, Expr]
-    object StrExpr extends ParserBridge1[String, Expr]
-    object ArrayElem extends ParserBridge2[Identifier, List[Expr], Either[Lvalue, Expr]]
-    object ParenExpr extends ParserBridge1[Expr, Expr]
-    object Identifer extends ParserBridge1[String, Either[Lvalue, Expr]]
+    object IntExpr extends ParserBridge1[BigInt, Expr0]
+    object BoolExpr extends ParserBridge1[Boolean, Expr0]
+    object CharExpr extends ParserBridge1[Char, Expr0]
+    object StrExpr extends ParserBridge1[String, Expr0]
+    object ArrayElem extends ParserBridge2[Identifier, List[Expr], ArrayElem]
+    object ParenExpr extends ParserBridge1[Expr, Expr0]
+    object Identifier extends ParserBridge1[String, Identifier]
     // Unary operations
     object NotOp extends ParserBridge1[Expr0, Expr0]
     object NegateOp extends ParserBridge1[Expr0, Expr0]
