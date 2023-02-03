@@ -9,8 +9,8 @@ object Main {
         val myFile = new File(args.head)
 
         parse(myFile) match {
-            case Success(x) => return 0
-            case Failure(msg) => return 100
+            case Success(x) => sys.exit(0)
+            case Failure(x) => sys.exit(100)
         }
     }
 }

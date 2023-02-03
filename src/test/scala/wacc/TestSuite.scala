@@ -20,15 +20,22 @@ class WaccTestSuite extends AnyFlatSpec {
   def testDirectory(directoryPath: String, exitCode: Int) : Unit = {
     // Extract all the files from the subdirectories (and their subdirectories)
     val testFiles = getAllFiles(directoryPath)
-
+    val filesTested = 0
+    val filesPassed = 0
     // Loop through the test files and check our parser works
     for (file <- testFiles) {
         val filePath = directoryPath + file
-        println(filePath)
         (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {
-            assert(run(filePath) == exitCode)
+            val testCorrect = run(filePath) == exitCode
+            assert(testCorrect)
         }
+        if (testCorrect) {
+          filesPassed += 1
+        }
+        filesTested += 1
     }
+
+    println(s"\n\n$filesPassed/$filesPassed tests passed\n\n")
   }
   
   // Returns the contents of a directory as a List[String]
