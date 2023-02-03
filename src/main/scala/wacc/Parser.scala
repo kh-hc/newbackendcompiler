@@ -7,6 +7,7 @@ object parser {
     import parsley.Parsley.{attempt}
     import parsley.io.ParseFromIO
     import java.io.File
+    import parsley.debug.DebugCombinators
 
     import lexer._
     import implicits.implicitSymbol
@@ -28,10 +29,10 @@ object parser {
 
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
 
-    private lazy val func: Parsley[FunctionUnit] = attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
-        <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end"))
+    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
+        <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end")))
 
-    private lazy val paramList: Parsley[ParamList] = ParamList(sepBy1(param, ","))
+    private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, ","))
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
@@ -57,8 +58,8 @@ object parser {
         <|> arrayLiteral
         <|> NewPair("newpair" *> "(" *> expression <* ",", expression <* ")")
         <|> pairElem
-        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")"))
-        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")")))
+        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")"))
+        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")")))
 
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
