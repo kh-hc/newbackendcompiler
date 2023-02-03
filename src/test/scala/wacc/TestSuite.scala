@@ -26,14 +26,14 @@ class WaccTestSuite extends AnyFlatSpec {
     for (file <- testFiles) {
         val filePath = directoryPath + file
         val testCorrect = run(filePath) == exitCode
-        
+
         (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {   
             assert(testCorrect)
         }
         if (testCorrect) {
-          filesPassed += 1
+          filesPassed = filesPassed + 1
         }
-        filesTested += 1
+        filesTested = filesTested + 1
     }
 
     println(s"\n\n$filesPassed/$filesTested tests passed\n\n")
