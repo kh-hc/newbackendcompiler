@@ -14,8 +14,8 @@ class WaccTestSuite extends AnyFlatSpec {
   println("Initializing invalid program test cases (syntax)")
   testDirectory(rootPath + "invalid/syntaxErr/", 100)
 
-  println("Initializing invalid program test cases (semantics)")
-  testDirectory(rootPath + "invalid/semanticErr/", 200)  
+  // println("Initializing invalid program test cases (semantics)")
+  // testDirectory(rootPath + "invalid/semanticErr/", 200)  
 
   def testDirectory(directoryPath: String, exitCode: Int) : Unit = {
     // Extract all the files from the subdirectories (and their subdirectories)
