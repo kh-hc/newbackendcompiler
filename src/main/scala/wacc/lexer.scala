@@ -6,7 +6,9 @@ object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
-    
+    import parsley.Parsley.{attempt, notFollowedBy}
+    import parsley.character.{char, digit}
+
     private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
             identifierStart = Unicode(c => Character.isLetter(c) || c == '_'),
@@ -46,7 +48,14 @@ object lexer {
 
     val IDENT = lexer.lexeme.names.identifier
 
-    val INT = lexer.lexeme.numeric.signed.decimal32
+    // define POS and NEG numbers
+    private val NEG = (char('-') *> lexer.lexeme(attempt(digit.foldLeft1[Int](0)((n, d) => n * 10 + d.asDigit)))).map(x => x * -1)
+    private val NUM = lexer.lexeme.numeric.integer.number32
+
+    // define NEGATE
+    val NEGATE = lexer.lexeme(attempt(char('-') ~> notFollowedBy(digit)))
+
+    val INT = lexer.lexeme(attempt(NEG)) <|> NUM
     val STRING = lexer.lexeme.text.string.ascii
     val CHAR = lexer.lexeme.text.character.ascii
 

@@ -85,7 +85,7 @@ object parser {
                 GreaterOrEqualThan <# ">=", GreaterThan <# ">") +:
             SOps(InfixL)(Add <# "+", Sub <# "-") +:
             SOps(InfixL)(Mul <# "*", Div <# "/", Mod <# "%") +:
-            SOps(Prefix)(NotOp <# "!", NegateOp <# "-", LenOp <# "len",
+            SOps(Prefix)(NotOp <# "!", NegateOp <# NEGATE , LenOp <# "len",
                 OrdOp <# "ord", ChrOp <# "chr") +:
             Atoms(atomicExpression))
 
