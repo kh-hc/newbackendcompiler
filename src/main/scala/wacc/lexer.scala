@@ -49,7 +49,7 @@ object lexer {
     val IDENT = lexer.lexeme.names.identifier
 
     // define POS and NEG numbers
-    private val NEG = (char('-') *> lexer.lexeme(attempt(digit.foldLeft1[Int](0)((n, d) => n * 10 + d.asDigit)))).map(x => x * -1)
+    private val NEG = (char('-') *> lexer.lexeme(attempt(lexer.lexeme.numeric.integer.number32))).map(x => x * -1)
     private val NUM = lexer.lexeme.numeric.integer.number32
 
     // define NEGATE
