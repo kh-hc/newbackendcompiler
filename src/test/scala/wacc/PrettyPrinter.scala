@@ -7,7 +7,7 @@ object PrettyPrinters {
     def prettyPrintFunction(functionLine : ast.FunctionUnit) : String = functionLine match {
       case ast.ParamFunc(t, id, params, body) => {prettyPrintType(t) + " " +
                                                   prettyPrintExpr(id) + "(" +
-                                                  prettyPrintParams(params) + ") is\n\t" +
+                                                  prettyPrintParams(params) + ") is\n" +
                                                   prettyPrintStatement(body) + "\nend"}
       case ast.NiladicFunc(t, id, body)       => {prettyPrintType(t) + " " +
                                                   prettyPrintExpr(id) + "()" +
@@ -16,13 +16,19 @@ object PrettyPrinters {
 
     def prettyPrintParams(params : ast.ParamList) : String = {
       // ParamList : List[Type, Identifier]
-      var parameterList = ""
       val abstractedParams = params.paramlist
-      for (p <- abstractedParams) {
-        val t = p.t
-        val id = p.id
-        val paramInfo = prettyPrintType(t) + " " + prettyPrintExpr(id)
-        parameterList = parameterList + ", " + paramInfo
+      var parameterList = ""
+      if (abstractedParams.length > 0) {
+        val firstParam = abstractedParams(0)
+        parameterList = prettyPrintType(firstParam.t) + " " + prettyPrintExpr(firstParam.id)
+        for (p <- 1 to abstractedParams.length - 1) {
+          val param = abstractedParams(p)
+          println(param)
+          val t = param.t
+          val id = param.id
+          val paramInfo = prettyPrintType(t) + " " + prettyPrintExpr(id)
+          parameterList = parameterList + ", " + paramInfo
+        }
       }
       return parameterList
     }
@@ -41,20 +47,20 @@ object PrettyPrinters {
       case ast.PrintlnStat(expr)          =>  "print " + prettyPrintExpr(expr) + " ;\n"
       case ast.IfStat(cond, ifStat, elseStat) => {"if\n" +
                                                   prettyPrintExpr(cond) +
-                                                  "\nthen\n\t" +
+                                                  "\nthen\n" +
                                                   prettyPrintStatement(ifStat) +
-                                                  "\nelse\n\t" +
+                                                  "\nelse\n" +
                                                   prettyPrintStatement(ifStat) +
-                                                  "fi"}
+                                                  "\nfi"}
       case ast.WhileStat(cond, body)      =>  {"while\n" +
                                                 prettyPrintExpr(cond) +
-                                                "\ndo\n\t" +
+                                                "\ndo\n" +
                                                 prettyPrintStatement(body) + "\ndone"}
-      case ast.ScopeStat(body)            => "begin\n\t" + prettyPrintStatement(body) + "\nend"
+      case ast.ScopeStat(body)            => "begin\n" + prettyPrintStatement(body) + "\nend"
       case ast.SeqStat(statements)        =>  {
         var instruction = ""
         for (statement <- statements) {
-          instruction = prettyPrintStatement(statement) + " ;"
+          instruction = instruction + prettyPrintStatement(statement) + " ;"
         }
         return instruction
       }
