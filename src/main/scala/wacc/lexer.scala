@@ -1,14 +1,12 @@
 package wacc
 
 import parsley.Parsley
-import scala.language.implicitConversions
 
 object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
-    import parsley.debug._
-
+    
     private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
             identifierStart = Unicode(c => Character.isLetter(c) || c == '_'),
@@ -34,7 +32,9 @@ object lexer {
                                 'f' -> 0x0c, 
                                 'r' -> 0x0d
                 ),
-            )
+            ),
+            characterLiteralEnd = '\'',
+            graphicCharacter = Basic(c => (c >= ' '.toInt) && !Set(0x22, 0x27, 0x5C).contains(c))
         ),
         SpaceDesc.plain.copy(
             commentLine = "#",
@@ -46,7 +46,7 @@ object lexer {
 
     val IDENT = lexer.lexeme.names.identifier
 
-    val INT = lexer.lexeme.numeric.integer.number
+    val INT = lexer.lexeme.numeric.signed.decimal32
     val STRING = lexer.lexeme.text.string.ascii
     val CHAR = lexer.lexeme.text.character.ascii
 

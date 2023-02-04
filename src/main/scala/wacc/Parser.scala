@@ -4,10 +4,9 @@ import parsley.Parsley
 
 object parser {
     import parsley.combinator._
-    import parsley.Parsley.{attempt, lookAhead}
+    import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
     import java.io.File
-    import parsley.debug.DebugCombinators
 
     import lexer._
     import implicits.implicitSymbol
@@ -100,7 +99,6 @@ object parser {
         case WhileStat(_, body) => endsInRet(body)
         case ScopeStat(body) => endsInRet(body)
         case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && endsInRet(elseStat)
-        case ScopeStat(body) => endsInRet(body)
         case SeqStat(statements) => endsInRet(statements.last)
         case ExitStat(expr) => true
         case ReturnStat(expr) => true
