@@ -8,10 +8,10 @@ object PrettyPrinters {
       case ast.ParamFunc(t, id, params, body) => {prettyPrintType(t) + " " +
                                                   prettyPrintExpr(id) + "(" +
                                                   prettyPrintParams(params) + ") is\n" +
-                                                  prettyPrintStatement(body) + "\nend"}
+                                                  endTheStatement(prettyPrintStatement(body))}
       case ast.NiladicFunc(t, id, body)       => {prettyPrintType(t) + " " +
-                                                  prettyPrintExpr(id) + "()" +
-                                                  prettyPrintStatement(body) + "\nend"}
+                                                  prettyPrintExpr(id) + "() is\n" +
+                                                  endTheStatement(prettyPrintStatement(body))}
     }
 
     def prettyPrintParams(params : ast.ParamList) : String = {
@@ -23,7 +23,6 @@ object PrettyPrinters {
         parameterList = prettyPrintType(firstParam.t) + " " + prettyPrintExpr(firstParam.id)
         for (p <- 1 to abstractedParams.length - 1) {
           val param = abstractedParams(p)
-          println(param)
           val t = param.t
           val id = param.id
           val paramInfo = prettyPrintType(t) + " " + prettyPrintExpr(id)
@@ -37,14 +36,15 @@ object PrettyPrinters {
       case ast.SkipStat                   =>  "skip"
       case ast.AssignStat(t, id, value)   =>  {prettyPrintType(t) + " " +
                                               prettyPrintExpr(id) + " = " +
-                                              value.toString}
-      case ast.ReassignStat(left, right)  =>  left.toString + " = " + right.toString
-      case ast.ReadStat(value)            =>  "read " + value.toString + " ;"
+                                              prettyPrintRvalue(value)}
+      case ast.ReassignStat(left, right)  =>  prettyPrintLValue(left) + " = " + prettyPrintRvalue(right)
+      case ast.ReadStat(value)            =>  "read " + prettyPrintLValue(value) + " ;"
       case ast.FreeStat(expr)             =>  "free " + prettyPrintExpr(expr)
       case ast.ReturnStat(expr)           =>  "return " + prettyPrintExpr(expr)
       case ast.ExitStat(expr)             =>  "exit " + prettyPrintExpr(expr)
-      case ast.PrintStat(expr)            =>  "print " + prettyPrintExpr(expr) + " ;"
-      case ast.PrintlnStat(expr)          =>  "print " + prettyPrintExpr(expr) + " ;\n"
+      // Note that if a char is printed, it should be '' instead of """"
+      case ast.PrintStat(expr)            =>  "print \"" + prettyPrintExpr(expr) + "\" ;"
+      case ast.PrintlnStat(expr)          =>  "println \"" + prettyPrintExpr(expr) + "\" ;\n"
       case ast.IfStat(cond, ifStat, elseStat) => {"if\n" +
                                                   prettyPrintExpr(cond) +
                                                   "\nthen\n" +
@@ -56,7 +56,7 @@ object PrettyPrinters {
                                                 prettyPrintExpr(cond) +
                                                 "\ndo\n" +
                                                 prettyPrintStatement(body) + "\ndone"}
-      case ast.ScopeStat(body)            => "begin\n" + prettyPrintStatement(body) + "\nend"
+      case ast.ScopeStat(body)            => "begin\n" + endTheStatement(prettyPrintStatement(body))
       case ast.SeqStat(statements)        =>  {
         var instruction = ""
         for (statement <- statements) {
@@ -81,9 +81,15 @@ object PrettyPrinters {
     def prettyPrintRvalue(rValue : ast.Rvalue) : String = rValue match {
       case ast.ArrayLiteral(value)           =>  prettyPrintExprList(value)
       case ast.NewPair(exprLeft, exprRight)  =>  {"newpair (" + prettyPrintExpr(exprLeft) +
-                                                  ", " + prettyPrintExpr(exprRight)}
-      case ast.ParamCall(id, args)           => {"call " + prettyPrintExpr(id) +
-                                                "(" + prettyPrintExprList(args.args) + ")"}
+                                                  ", " + prettyPrintExpr(exprRight) + ")"}
+      case ast.ParamCall(id, args)           => {
+        var instruction = ""
+        for (expr <- args.args) {
+          instruction = instruction + ", " + prettyPrintExpr(expr)
+        }
+        "call " + prettyPrintExpr(id) +
+        "(" + instruction + ")"
+      }
       case ast.NiladicCall(id)               => "call " + prettyPrintExpr(id) + "()"
       case default                           => prettyPrintExpr(rValue.asInstanceOf[ast.Expr])
     }
@@ -107,7 +113,7 @@ object PrettyPrinters {
       case ast.IntExpr(value)           => value.toString
       case ast.BoolExpr(value)          => value.toString
       case ast.CharExpr(value)          => value.toString
-      case ast.StrExpr(value)           => value.toString
+      case ast.StrExpr(value)           => value
       case ast.PairLiteral              => "null"
       case ast.ArrayElem(id, position)  => prettyPrintExpr(id) + prettyPrintExprList(position)
       case ast.ParenExpr(expr)          => "(" + prettyPrintExpr(expr) + ")"
@@ -143,6 +149,15 @@ object PrettyPrinters {
           instruction = instruction + "[" + prettyPrintExpr(expr) + "]"
         }
         return instruction
+    }
+
+    // If the next keyword is "end", the line shouldn't end with a semicolon
+    def endTheStatement(statement : String) : String = {
+      var updatedStatement = statement
+      if (statement.charAt(statement.length - 1) == ';') {
+        updatedStatement = updatedStatement.slice(0, updatedStatement.length - 2)
+      }
+      return updatedStatement + "\nend"
     }
 
 }
