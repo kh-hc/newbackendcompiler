@@ -1,22 +1,9 @@
 package wacc
-// import org.scalacheck.Properties
-// import scala.sys.process._
 import org.scalatest.flatspec.AnyFlatSpec
 import java.io.File
 import scala.io.Source
 
-// object TestingTheTestSuite extends Properties("PrettyPrinters") {
-
-//   property("prettyPrintFunction")  =>
-//     (a+b).startsWith(a)
-//   }
-  
 class WaccTestSuite extends AnyFlatSpec {
-  // val testProgram = ast.WACCprogram(List(), ast.SkipStat)
-  // ("Test program") should "output \"skip\"" in {
-  //   assert(PrettyPrinters.prettyPrintStatement(ast.SkipStat) == "skip")
-  // }
-
   // One test for each subdirectory in the valid folder
 
   // Get the root path
@@ -66,10 +53,14 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("function/simple_functions/fibonacciFullRec.wacc") should "be correctly parsed by our parser" in {
+  // ("function/simple_functions/asciiTable.wacc") should "be correctly parsed by our parser" in {
   //   val testFile = new File(validRootPath + "function/simple_functions/asciiTable.wacc")
   //   val formattedTest = formatTestFile(testFile)
   //   val formattedParsedProgram = formatParserProgram(testFile)
+
+  //   println("formattedParsedProgram: " + formattedParsedProgram)
+  //   println("formattedTest:         " + formattedTest)
+
   //   assert(formattedTest == formattedParsedProgram)
   // }
 
@@ -80,10 +71,14 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("IO/print/hashInProgram.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "IO/print/hashInProgram.wacc")
+  // ("IO/print/print-backspace.wacc") should "be correctly parsed by our parser" in {
+  //   val testFile = new File(validRootPath + "IO/print/print-backspace.wacc")
   //   val formattedTest = formatTestFile(testFile)
   //   val formattedParsedProgram = formatParserProgram(testFile)
+
+  //   println("formattedParsedProgram: " + formattedParsedProgram)
+  //   println("formattedTest:         " + formattedTest)
+
   //   assert(formattedTest == formattedParsedProgram)
   // }
 
@@ -98,6 +93,8 @@ class WaccTestSuite extends AnyFlatSpec {
   //   val testFile = new File(validRootPath + "IO/IOLoop.wacc")
   //   val formattedTest = formatTestFile(testFile)
   //   val formattedParsedProgram = formatParserProgram(testFile)
+  //   println("formattedParsedProgram: " + formattedParsedProgram)
+  //   println("formattedTest:         " + formattedTest)
   //   assert(formattedTest == formattedParsedProgram)
   // }
 
@@ -115,19 +112,29 @@ class WaccTestSuite extends AnyFlatSpec {
     text.replace(" ", "").replace("\n", "").replace("\t", "")
   }
 
-  // Gets all text from a file without lines or whitespace
+  // Gets all text from a file without lines
   def getTextFromFile(file : File) : String = {
     val lines = Source.fromFile(file).getLines()
     var formattedLines = ""
     for (line <- lines) {
       val lineWithoutWhitespace = discardWhitespace(line)
-      if (lineWithoutWhitespace.length > 0) {
+      val len = lineWithoutWhitespace.length
+      if (len > 0) {
+        // for (j <- 0 to len - 1) {
+        //   if (lineWithoutWhitespace.charAt(j) == '#') {
+        //     // println(lineWithoutWhitespace + " j: " + j + lineWithoutWhitespace.slice(0, j))
+        //     val lineWithoutComments = lineWithoutWhitespace.slice(0, j)
+        //     formattedLines = formattedLines + lineWithoutComments
+        //   } else {
+        //     formattedLines = formattedLines + lineWithoutWhitespace
+        //   }
+        // }
         if (lineWithoutWhitespace.charAt(0) != '#') {
           formattedLines = formattedLines + line
         }
       }
     }
-    discardWhitespace(formattedLines)
+    return formattedLines
   }
 
   // Format the test file for comparison
@@ -153,20 +160,4 @@ class WaccTestSuite extends AnyFlatSpec {
     parsedProgramLines = parsedProgramLines + "end"
     discardWhitespace(parsedProgramLines)
   }
-
-  // def parsedProgramIsCorrect(formattedTest : String, formattedParsedProgram : String) = {
-  //   if (formattedTest.length >= formattedParsedProgram.length) {
-  //     compare(formattedTest, formattedParsedProgram)
-  //   } else {
-  //     compare(formattedParsedProgram, formattedTest)
-  //   }
-  // }
-
-  // def compare(stringLonger : String, stringShorter : String) {
-  //   for (i <- 0 to stringLonger.length) {
-  //     val charLonger = stringLonger.charAt(i)
-  //     val charShorter = stringLonger.charAt(i)
-  //     while (charLonger == )
-  //   }
-  // }
 }

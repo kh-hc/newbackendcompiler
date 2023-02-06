@@ -42,7 +42,6 @@ object PrettyPrinters {
       case ast.FreeStat(expr)             =>  "free " + prettyPrintExpr(expr, false)
       case ast.ReturnStat(expr)           =>  "return " + prettyPrintExpr(expr, false)
       case ast.ExitStat(expr)             =>  "exit " + prettyPrintExpr(expr, false)
-      // Note that if a char is printed, it should be '' instead of """"
       case ast.PrintStat(expr)            =>  "print " + prettyPrintExpr(expr, true)
       case ast.PrintlnStat(expr)          =>  "println " + prettyPrintExpr(expr, true) + "\n"
       case ast.IfStat(cond, ifStat, elseStat) => {"if\n" +
@@ -126,14 +125,14 @@ object PrettyPrinters {
         case ast.CharExpr(value)          => {
           var char = value.toString
           if (toPrint) {
-            char = "\'" + value.toString + "\'"
+            char = "\'" + char + "\'"
           }
           return char
         }
         case ast.StrExpr(value)           => {
           var str = value
           if (toPrint) {
-            str = "\"" + str.toString + "\""
+            str = "\"" + value + "\""
           }
           return str
         }
@@ -173,14 +172,5 @@ object PrettyPrinters {
         }
         return instruction
     }
-
-    // If the next keyword is "end", the line shouldn't end with a semicolon
-    // def endTheStatement(statement : String) : String = {
-    //   var updatedStatement = statement
-    //   if (statement.charAt(statement.length - 1) == ';') {
-    //     updatedStatement = updatedStatement.slice(0, updatedStatement.length - 2)
-    //   }
-    //   return updatedStatement + "\nend"
-    // }
 
 }
