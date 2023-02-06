@@ -29,7 +29,7 @@ object parser {
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
 
     private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", ("is" *> statement <* "end").filter(stats => endsInRet(stats)))
-        <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end")))
+        <|> NiladicFunc(tiepe, identifier, ("(" *> ")" *> "is" *> statement <* "end").filter(stats => endsInRet(stats)))))
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, ","))
 
@@ -51,8 +51,6 @@ object parser {
         <|> ScopeStat("begin" *> statement <* "end")
     )
 
-    //chain.postfix(baseType <|> pairType, ArrayType <# "[]")
-    //private lazy val lValue: Parsley[Lvalue] = chain.right(identifier <|> pairElem, ArrayElem "[" *> expression <* "]")
     private lazy val lValue: Parsley[Lvalue] = arrayElem <|> (pairElem <|> identifier)
 
     private lazy val rValue: Parsley[Rvalue] = (expression
@@ -96,6 +94,10 @@ object parser {
     def parse(input: File) = program.parseFromFile(input).get
 
     def endsInRet(input: StatementUnit) : Boolean = input match {
+        /*
+        Ensures a function ends with either a return or exit  statement
+        by recursively stepping through the final statement.
+        */
         case WhileStat(_, body) => endsInRet(body)
         case ScopeStat(body) => endsInRet(body)
         case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && endsInRet(elseStat)
