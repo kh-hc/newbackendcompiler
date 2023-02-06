@@ -68,8 +68,8 @@ object parser {
     private val atomicExpression: Parsley[Expr0] = (IntExpr(INT)
         <|> StrExpr(STRING)
         <|> CharExpr(CHAR)
-        <|> "true" #> BoolExpr(true)
-        <|> "false" #> BoolExpr(false)
+        <|> BoolExpr("true" #> true)
+        <|> BoolExpr("false" #> false)
         <|> "null" #> PairLiteral
         <|> arrayElem
         <|> identifier
