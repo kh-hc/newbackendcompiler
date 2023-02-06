@@ -1,21 +1,10 @@
 package wacc
-import scala.collection.mutable.HashMap
-
-object SymbolTypes {
-    sealed trait SymbolType
-
-    case object IntSymbol extends SymbolType
-    case object BoolType extends SymbolType
-    case object CharSymbol extends SymbolType
-    case object StringSymbol extends SymbolType
-    case class ArraySymbol(t: SymbolType) extends SymbolType
-    case class PairSymbol(ft: SymbolType, st: SymbolType) extends SymbolType
-    case class FunctionSymbol(t: ReturnType) extends SymbolType
-}
+import scala.collection.immutable.HashMap
 
 class SymbolTable(val parent: Option[SymbolTable]) {
+    import SymbolTypes.SymbolType
 
-    var table = new HashMap();
+    var table = new HashMap[String, SymbolType]();
 
     def add(name: String, t: SymbolType) : Unit = (
         table = table + (name -> t)
@@ -35,4 +24,16 @@ class SymbolTable(val parent: Option[SymbolTable]) {
         }
         symbolType
     }
+}
+
+object SymbolTypes {
+    sealed trait SymbolType
+
+    case object IntSymbol extends SymbolType
+    case object BoolType extends SymbolType
+    case object CharSymbol extends SymbolType
+    case object StringSymbol extends SymbolType
+    case class ArraySymbol(t: SymbolType) extends SymbolType
+    case class PairSymbol(ft: SymbolType, st: SymbolType) extends SymbolType
+    case class FunctionSymbol(returnType: SymbolType) extends SymbolType
 }
