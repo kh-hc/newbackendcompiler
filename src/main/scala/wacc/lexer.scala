@@ -1,13 +1,13 @@
 package wacc
 
 import parsley.Parsley
-import scala.language.implicitConversions
 
 object lexer {
     import parsley.token.Lexer 
     import parsley.token.descriptions.{LexicalDesc, NameDesc, SymbolDesc, SpaceDesc, numeric, text}
     import parsley.token.predicate.{Unicode, Basic}
-    import parsley.character.newline
+    import parsley.Parsley.{attempt, notFollowedBy}
+    import parsley.character.{char, digit}
 
     private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
@@ -34,18 +34,13 @@ object lexer {
                                 'f' -> 0x0c, 
                                 'r' -> 0x0d
                 ),
-                multiMap = Map("NUL" -> 0x00,
-                                "BS" -> 0x08, 
-                                "TAB" -> 0x09, 
-                                "LF" -> 0x0a, 
-                                "FF" -> 0x0c, 
-                                "CR" -> 0x0d
-                ),
-            )
+            ),
+            characterLiteralEnd = '\'',
+            graphicCharacter = Basic(c => (c >= ' '.toInt) && !Set(0x22, 0x27, 0x5C).contains(c))
         ),
         SpaceDesc.plain.copy(
             commentLine = "#",
-            space = Basic(c => c == ' ' || c == '\t' || c == '\n'),
+            space = Basic(_.isWhitespace),
         )
     )
 
@@ -53,11 +48,16 @@ object lexer {
 
     val IDENT = lexer.lexeme.names.identifier
 
-    val INT = lexer.lexeme.numeric.integer.number
+    // define POS and NEG numbers
+    private val NEG = (char('-') *> lexer.lexeme(attempt(lexer.lexeme.numeric.integer.number32))).map(x => x * -1)
+    private val NUM = lexer.lexeme.numeric.integer.number32
+
+    // define NEGATE
+    val NEGATE = lexer.lexeme(attempt(char('-') ~> notFollowedBy(digit)))
+
+    val INT = lexer.lexeme(attempt(NEG)) <|> NUM
     val STRING = lexer.lexeme.text.string.ascii
     val CHAR = lexer.lexeme.text.character.ascii
-
-    val NEWLINE = lexer.lexeme(newline).void
 
     def fully[A](p: Parsley[A]) = lexer.fully(p)
 

@@ -1,7 +1,5 @@
 package wacc
 
-import parsley.Parsley
-
 object abstractSyntaxTree {
     import parsley.genericbridges._
 
@@ -63,7 +61,7 @@ object abstractSyntaxTree {
     case class PairElemTypeT(t: Type) extends PairElemType
     case object NestedPair extends PairElemType with ParserBridge0[PairElemType]
 
-    case class IntExpr(value: BigInt) extends Expr0
+    case class IntExpr(value: Int) extends Expr0
     case class BoolExpr(value: Boolean) extends Expr0
     case class CharExpr(value: Char) extends Expr0
     case class StrExpr(value: String) extends Expr0
@@ -146,7 +144,7 @@ object abstractSyntaxTree {
     object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
     object PairElemTypeT extends ParserBridge1[Type, PairElemType]
     
-    object IntExpr extends ParserBridge1[BigInt, Expr0]
+    object IntExpr extends ParserBridge1[Int, Expr0]
     object BoolExpr extends ParserBridge1[Boolean, Expr0]
     object CharExpr extends ParserBridge1[Char, Expr0]
     object StrExpr extends ParserBridge1[String, Expr0]

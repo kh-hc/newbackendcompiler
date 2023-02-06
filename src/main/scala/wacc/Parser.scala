@@ -4,7 +4,7 @@ import parsley.Parsley
 
 object parser {
     import parsley.combinator._
-    import parsley.Parsley.{attempt}
+    import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
     import java.io.File
 
@@ -28,10 +28,10 @@ object parser {
 
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
 
-    private lazy val func: Parsley[FunctionUnit] = attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", "is" *> statement <* "end")
-        <|> NiladicFunc(tiepe, identifier, "(" *> ")" *> "is" *> statement <* "end"))
+    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", ("is" *> statement <* "end").filter(stats => endsInRet(stats)))
+        <|> NiladicFunc(tiepe, identifier, ("(" *> ")" *> "is" *> statement <* "end").filter(stats => endsInRet(stats)))))
 
-    private lazy val paramList: Parsley[ParamList] = ParamList(sepBy1(param, ","))
+    private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, ","))
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
 
@@ -51,19 +51,19 @@ object parser {
         <|> ScopeStat("begin" *> statement <* "end")
     )
 
-    private lazy val lValue: Parsley[Lvalue] = identifier <|> arrayElem <|> pairElem
+    private lazy val lValue: Parsley[Lvalue] = arrayElem <|> (pairElem <|> identifier)
 
     private lazy val rValue: Parsley[Rvalue] = (expression
         <|> arrayLiteral
         <|> NewPair("newpair" *> "(" *> expression <* ",", expression <* ")")
         <|> pairElem
-        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")"))
-        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")")))
+        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")"))
+        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")")))
 
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
         
-    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy1(expression, ",") <* "]")
+    private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy(expression, ",") <* "]")
 
     private val atomicExpression: Parsley[Expr0] = (IntExpr(INT)
         <|> StrExpr(STRING)
@@ -71,6 +71,7 @@ object parser {
         <|> "true" #> BoolExpr(true)
         <|> "false" #> BoolExpr(false)
         <|> "null" #> PairLiteral
+        <|> arrayElem
         <|> identifier
         <|> ParenExpr("(" *> expression <* ")"))
 
@@ -82,7 +83,7 @@ object parser {
                 GreaterOrEqualThan <# ">=", GreaterThan <# ">") +:
             SOps(InfixL)(Add <# "+", Sub <# "-") +:
             SOps(InfixL)(Mul <# "*", Div <# "/", Mod <# "%") +:
-            SOps(Prefix)(NotOp <# "!", NegateOp <# "-", LenOp <# "len",
+            SOps(Prefix)(NotOp <# "!", NegateOp <# NEGATE , LenOp <# "len",
                 OrdOp <# "ord", ChrOp <# "chr") +:
             Atoms(atomicExpression))
 
@@ -91,5 +92,19 @@ object parser {
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
 
     def parse(input: File) = program.parseFromFile(input).get
+
+    def endsInRet(input: StatementUnit) : Boolean = input match {
+        /*
+        Ensures a function ends with either a return or exit  statement
+        by recursively stepping through the final statement.
+        */
+        case WhileStat(_, body) => endsInRet(body)
+        case ScopeStat(body) => endsInRet(body)
+        case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && endsInRet(elseStat)
+        case SeqStat(statements) => endsInRet(statements.last)
+        case ExitStat(expr) => true
+        case ReturnStat(expr) => true
+        case _ => false
+    }
 
 }
