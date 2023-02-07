@@ -76,7 +76,7 @@ object WACCErrors {
         linesAfter.map(line => s"$errorLineStart$line")
       }
 
-      private val errorLineStart = ">"
+      private val errorLineStart = "|"
       private def errorPointer(caretAt: Int, caretWidth: Int) = s"${" " * caretAt}${"^" * caretWidth}"
 
       override val numLinesBefore: Int = 1
