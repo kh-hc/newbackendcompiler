@@ -118,7 +118,7 @@ object parser {
           "'+', '-', '*', '/', '%'.\nUnary operations are prefix notated and can be: \n    '!', '-', 'len', " +
           "'ord', 'chr'")
 
-    private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
+    private val argList: Parsley[ArgList] = ArgList(sepBy(expression, ","))
         .label("Argument list")
 
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
