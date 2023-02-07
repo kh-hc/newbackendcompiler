@@ -53,11 +53,12 @@ object SymbolTypes {
     case object CharSymbol extends SymbolType
     case object StringSymbol extends SymbolType
     case class ArraySymbol(t: SymbolType) extends SymbolType
-    case class PairSymbol(ft: SymbolType, st: SymbolType) extends SymbolType
-    case object NestedPairSymbol extends SymbolType
+    sealed trait PairSymbol extends SymbolType
+    case class TopPairSymbol(ft: SymbolType, st: SymbolType) extends PairSymbol
+    case object PairObjSymbol extends PairSymbol
     case class FunctionSymbol(returnType: SymbolType, argTypes: List[SymbolType]) extends SymbolType
-    case object AmbiguousSymbol extends SymbolTree
-    case object NullSymbol extends SymbolTree
+    case object AmbiguousSymbol extends SymbolType
+    case object NoReturn extends SymbolTree
 
     def translate(t: Any) : SymbolType = t match {
             case IntT => IntSymbol
@@ -69,4 +70,9 @@ object SymbolTypes {
             case PairElemTypeT => translate(t.t)
             case NestedPair => NestedPairSymbol
         }
+
+    def getBaseType(t: SymbolType): SymbolType = t match{
+        case ArraySymbol(t) => getBaseType(t.t)
+        case baseType => baseType
+    }
 }
