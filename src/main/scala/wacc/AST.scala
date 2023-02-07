@@ -6,19 +6,15 @@ object abstractSyntaxTree {
     import parsley.position._
     import parsley.implicits.zipped._
 
-    sealed trait ASTNode
-
-    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int)) extends ASTNode
+    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int)) 
     
-    sealed trait FunctionUnit extends ASTNode
-    case class ParamFunc(t: Type, id: Identifier, params: ParamList, body: StatementUnit)(val pos: (Int, Int)) extends FunctionUnit
-    case class NiladicFunc(t: Type, id: Identifier, body: StatementUnit)(val pos: (Int, Int)) extends FunctionUnit
+    case class FunctionUnit(t: Type, id: Identifier, params: ParamList, body: StatementUnit)(val pos: (Int, Int))
 
-    case class ParamList(paramlist: List[Param])(val pos: (Int, Int)) extends ASTNode
+    case class ParamList(paramlist: List[Param])(val pos: (Int, Int)) 
 
-    case class Param(t: Type, id: Identifier)(val pos: (Int, Int)) extends ASTNode
+    case class Param(t: Type, id: Identifier)(val pos: (Int, Int)) 
 
-    sealed trait StatementUnit extends ASTNode
+    sealed trait StatementUnit 
     case object SkipStat extends StatementUnit with ParserBridge0[StatementUnit]
     case class AssignStat(t: Type, id: Identifier, value: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReassignStat(left: Lvalue, right: Rvalue)(val pos: (Int, Int)) extends StatementUnit
@@ -33,24 +29,23 @@ object abstractSyntaxTree {
     case class ScopeStat(body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class SeqStat(statements: List[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
 
-    sealed trait Lvalue extends ASTNode
+    sealed trait Lvalue
 
     sealed trait PairElem extends Rvalue with Lvalue
 
     case class PairElemFst(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
     case class PairElemSnd(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
 
-    sealed trait Rvalue extends ASTNode
+    sealed trait Rvalue
     sealed trait Expr extends Rvalue
     case class ArrayLiteral(value: List[Expr])(val pos: (Int, Int)) extends Rvalue
     case class NewPair(exprLeft: Expr, exprRight: Expr)(val pos: (Int, Int)) extends Rvalue
     sealed trait Call extends Rvalue
     case class ParamCall(id: Identifier, args: ArgList)(val pos: (Int, Int)) extends Call
-    case class NiladicCall(id: Identifier)(val pos: (Int, Int)) extends Call
 
-    case class ArgList(args: List[Expr])(val pos: (Int, Int)) extends ASTNode
+    case class ArgList(args: List[Expr])(val pos: (Int, Int)) 
 
-    sealed trait Type extends ASTNode
+    sealed trait Type 
     sealed trait BaseType extends Type
     case object IntT extends BaseType with ParserBridgePos0[Type]
     case object BoolT extends BaseType with ParserBridgePos0[Type]
@@ -144,8 +139,7 @@ object abstractSyntaxTree {
 
     object WACCprogram extends ParserBridgePos2[List[FunctionUnit], StatementUnit, WACCprogram]
 
-    object ParamFunc extends ParserBridgePos4[Type, Identifier, ParamList, StatementUnit, ParamFunc]
-    object NiladicFunc extends ParserBridgePos3[Type, Identifier, StatementUnit, NiladicFunc]
+    object FunctionUnit extends ParserBridgePos4[Type, Identifier, ParamList, StatementUnit, FunctionUnit]
 
     object ParamList extends ParserBridgePos1[List[Param], ParamList]
 
@@ -170,7 +164,6 @@ object abstractSyntaxTree {
     object ArrayLiteral extends ParserBridgePos1[List[Expr], ArrayLiteral]
     object NewPair extends ParserBridgePos2[Expr, Expr, NewPair]
     object ParamCall extends ParserBridgePos2[Identifier, ArgList, Call]
-    object NiladicCall extends ParserBridgePos1[Identifier, Call]
 
     object ArgList extends ParserBridgePos1[List[Expr], ArgList]
 
