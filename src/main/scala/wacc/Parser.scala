@@ -37,15 +37,10 @@ object parser {
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
         .label("Type")
 
-    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe.label("type"), identifier.label("identifier"),
+    private lazy val func: Parsley[FunctionUnit] = (attempt(FunctionUnit(tiepe.label("type"), identifier.label("identifier"),
             ("(" *> paramList.label("parameter list") <* ")"), 
-            ("is" *> statement.label("statement") <* "end").filter(stats => endsInRet(stats)))
-            <|> NiladicFunc(tiepe.label("type"), identifier.label("identifier"), 
-            ("(" *> ")" *> "is" *> statement.label("statement") <* "end")
-                .filter(stats => endsInRet(stats)))))
-                .label("Function")
-                .explain("A function requires a return type, identifier, 0 or more parameters, and a statement." +
-                  "It must end in a return")
+            ("is" *> statement.label("statement") <* "end").filter(stats => endsInRet(stats)))))
+
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, (",")))
         .label("Parameter list")
@@ -82,8 +77,7 @@ object parser {
         <|> arrayLiteral
         <|> NewPair("newpair" *> "(" *> expression <* ",", expression <* ")")
         <|> pairElem
-        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")"))
-        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")")))
+        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")")))
         .label("Right Value")
 
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
