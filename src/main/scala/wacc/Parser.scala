@@ -28,9 +28,7 @@ object parser {
 
     private val tiepe: Parsley[Type] = chain.postfix(baseType <|> pairType, ArrayType <# "[]")
 
-    private lazy val func: Parsley[FunctionUnit] = (attempt(ParamFunc(tiepe, identifier, "(" *> paramList <* ")", ("is" *> statement <* "end").filter(stats => endsInRet(stats)))
-        <|> NiladicFunc(tiepe, identifier, ("(" *> ")" *> "is" *> statement <* "end").filter(stats => endsInRet(stats)))))
-
+    private lazy val func: Parsley[FunctionUnit] = attempt(FunctionUnit(tiepe, identifier, "(" *> paramList <* ")", ("is" *> statement <* "end").filter(stats => endsInRet(stats))))
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, ","))
 
     private val param: Parsley[Param] = Param(tiepe, identifier)
@@ -57,8 +55,7 @@ object parser {
         <|> arrayLiteral
         <|> NewPair("newpair" *> "(" *> expression <* ",", expression <* ")")
         <|> pairElem
-        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")"))
-        <|> attempt(NiladicCall("call" *> identifier <* "(" <* ")")))
+        <|> attempt(Call("call" *> identifier <* "(", argList <* ")")))
 
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
@@ -87,7 +84,7 @@ object parser {
                 OrdOp <# "ord", ChrOp <# "chr") +:
             Atoms(atomicExpression))
 
-    private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
+    private val argList: Parsley[ArgList] = ArgList(sepBy(expression, ","))
 
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
 

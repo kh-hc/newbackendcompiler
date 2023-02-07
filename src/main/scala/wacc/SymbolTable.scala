@@ -7,13 +7,7 @@ class SymbolTable(val parent: Option[SymbolTable]) {
 
     var table = new HashMap[String, SymbolType]();
 
-    def add(func: FunctionUnit) : Unit = {
-        var paramSymbol : List[SymbolTable] = func match {
-            case ParamFunc => func.params.paramlist.map(p => translate(p.t))
-            case NiladicFunc => List[SymbolTypes]()
-        }
-        add(func.id.id, FunctionSymbol(translate(func.t), paramSymbol))
-    }
+    def add(func: FunctionUnit) : Unit = add(func.id.id, FunctionSymbol(translate(func.t), func.params.paramlist.map(p => translate(p.t))))
 
     def add(name: String, t: Type) : Unit = (
         add(name, translate(t))
@@ -58,21 +52,25 @@ object SymbolTypes {
     case object PairObjSymbol extends PairSymbol
     case class FunctionSymbol(returnType: SymbolType, argTypes: List[SymbolType]) extends SymbolType
     case object AmbiguousSymbol extends SymbolType
-    case object NoReturn extends SymbolTree
+    case object NoReturn extends SymbolType
 
     def translate(t: Any) : SymbolType = t match {
             case IntT => IntSymbol
             case BoolT => BoolSymbol
             case CharT => CharSymbol 
             case StringT => StringSymbol
-            case ArrayT => ArraySymbol(translate(t.t))
-            case PairType => PairSymbol(translate(t.fst), translate(t.snd))
-            case PairElemTypeT => translate(t.t)
-            case NestedPair => NestedPairSymbol
+            case ArrayType(n) => ArraySymbol(translate(n))
+            case PairType(fst, snd) => TopPairSymbol(translate(fst), translate(snd))
+            case PairElemTypeT(n) => translate(n)
+            case NestedPair => PairObjSymbol
         }
 
-    def getBaseType(t: SymbolType): SymbolType = t match{
-        case ArraySymbol(t) => getBaseType(t.t)
-        case baseType => baseType
+    def derefType(t: SymbolType, layers: Int): SymbolType = if (layers == 0) {
+        return t
+    } else {
+        t match{
+            case ArraySymbol(n) => derefType(n, layers - 1)
+            case baseType => baseType
+        }
     }
 }
