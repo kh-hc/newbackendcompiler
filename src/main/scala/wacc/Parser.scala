@@ -1,6 +1,7 @@
 package wacc
 
 import parsley.Parsley
+import parsley.errors.ErrorBuilder
 
 object parser {
     import parsley.combinator._
@@ -13,6 +14,7 @@ object parser {
     import abstractSyntaxTree._
     import parsley.expr.{precedence, SOps, InfixL, InfixN, Prefix, Atoms, chain}
     import parsley.errors.combinator._
+    import WACCErrors._
 
     private val identifier: Parsley[Identifier] = Identifier(IDENT)
 
@@ -117,9 +119,9 @@ object parser {
                 (OrdOp <# "ord").label("ORD"), (ChrOp <# "chr").label("CHR")) +:
             Atoms(atomicExpression))
         .label("Expression")
-        .explain("An expression can be a binary operation, unary operation, or atomic expression." +
-          "Binary operations are infix notated and can be '||', '&&', '!=', '==', '<=', '<','>=', '>'" +
-          "'+', '-', '*', '/', '%'. Unary operations are prefix notated and can be '!', '-', 'len', " +
+        .explain("An expression can be a binary operation, unary operation, or atomic expression. \n" +
+          "Binary operations are infix notated and can be: \n '||', '&&', '!=', '==', '<=', '<','>=', '>'" +
+          "'+', '-', '*', '/', '%'.\n Unary operations are prefix notated and can be: \n '!', '-', 'len', " +
           "'ord', 'chr'.")
 
     private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
@@ -128,6 +130,8 @@ object parser {
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
         .label("WACC program")
 
+    implicit val eb: ErrorBuilder[WACCError] = new WACCErrorBuilder
+    
     def parse(input: File) = program.parseFromFile(input).get
 
     def endsInRet(input: StatementUnit) : Boolean = input match {
