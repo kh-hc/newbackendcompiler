@@ -30,7 +30,7 @@ class WaccTestSuite extends AnyFlatSpec {
         (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {   
             assert(test == exitCode)
         }
-        if (testCorrect) {
+        if (test == exitCode) {
           filesPassed = filesPassed + 1
         } 
         filesTested = filesTested + 1
