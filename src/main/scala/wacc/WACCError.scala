@@ -20,6 +20,11 @@ object WACCErrors {
     case class SyntacticError(unexpected: Option[String], expecteds: Set[String], reasons: Set[String], lines: Seq[String]) extends WACCErrorLines {
         override val errorType: String = "Syntactic"
         override val errorLines: Seq[String] = lines
+        override def toString: String = {
+            "Unexpected value: " + unexpected.getOrElse("None") + "\n" +
+            "Expected value set:     " + expecteds.mkString("\n") + "\nReasons: \n" +
+            reasons.mkString("\n") + "\nError lines: \n" + lines.mkString("\n")
+        }
     }
     sealed trait SemanticError extends WACCErrorLines {
         override val errorType: String = "Semantic"

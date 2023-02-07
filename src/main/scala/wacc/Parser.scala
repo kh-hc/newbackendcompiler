@@ -29,7 +29,7 @@ object parser {
         <|> "char" #> CharT
         <|> "string" #> StringT)
         .label("Base Type")
-        .explain("Valid base types are int, bool, char and string.")
+        .explain("Valid base types are int, bool, char and string")
 
     private val pairType: Parsley[PairType] = PairType("pair" *> "(" *> pairElemType.label("fst") <* ",", pairElemType.label("snd") <* ")")
         .label("Pair Type")
@@ -45,7 +45,7 @@ object parser {
                 .filter(stats => endsInRet(stats)))))
                 .label("Function")
                 .explain("A function requires a return type, identifier, 0 or more parameters, and a statement." +
-                  "It must end in a return.")
+                  "It must end in a return")
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, (",")))
         .label("Parameter list")
@@ -55,7 +55,7 @@ object parser {
 
     private lazy val statement: Parsley[StatementUnit] = SeqStat(sepBy1(atomStatement, (";")))
         .label("Statement")
-        .explain("A statement can be either a list of statements or a singular statement.")
+        .explain("A statement can be either a list of statements or a singular statement")
 
     private lazy val atomStatement: Parsley[StatementUnit] = ("skip" #> SkipStat
         <|> AssignStat(tiepe, identifier, "=" *> rValue).label("assignment")
@@ -104,8 +104,8 @@ object parser {
         <|> identifier.label("identifier")
         <|> ParenExpr("(" *> expression <* ")").label("parenthesised expression"))
         .label("Atomic expression")
-        .explain("An atomic expression can be a string, char, boolean, pair literal, array element," +
-          "identifier, or a paranthesised expression.")
+        .explain("An atomic expression can be: \na string, char, boolean, pair literal, array element, " +
+          "identifier, or a paranthesised expression")
 
     private val expression: Parsley[Expr] = 
         precedence(SOps(InfixL)((Or <# "||").label("OR")) +:
@@ -120,9 +120,9 @@ object parser {
             Atoms(atomicExpression))
         .label("Expression")
         .explain("An expression can be a binary operation, unary operation, or atomic expression. \n" +
-          "Binary operations are infix notated and can be: \n '||', '&&', '!=', '==', '<=', '<','>=', '>'" +
-          "'+', '-', '*', '/', '%'.\n Unary operations are prefix notated and can be: \n '!', '-', 'len', " +
-          "'ord', 'chr'.")
+          "Binary operations are infix notated and can be: \n    '||', '&&', '!=', '==', '<=', '<','>=', '>'" +
+          "'+', '-', '*', '/', '%'.\nUnary operations are prefix notated and can be: \n    '!', '-', 'len', " +
+          "'ord', 'chr'")
 
     private val argList: Parsley[ArgList] = ArgList(sepBy1(expression, ","))
         .label("Argument list")
