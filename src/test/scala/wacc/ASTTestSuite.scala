@@ -18,9 +18,6 @@ class WaccTestSuite extends AnyFlatSpec {
     // Parse the test file and format it for comparison
     val formattedParsedProgram = formatParserProgram(testFile)
 
-    // println("formattedParsedProgram: " + formattedParsedProgram)
-    // println("\nformattedTest:          " + formattedTest)
-
     // Check that the parser works by comparing it to the test file
     assert(formattedTest == formattedParsedProgram)
   }
@@ -53,16 +50,12 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("function/simple_functions/asciiTable.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "function/simple_functions/asciiTable.wacc")
-  //   val formattedTest = formatTestFile(testFile)
-  //   val formattedParsedProgram = formatParserProgram(testFile)
-
-  //   println("formattedParsedProgram: " + formattedParsedProgram)
-  //   println("formattedTest:         " + formattedTest)
-
-  //   assert(formattedTest == formattedParsedProgram)
-  // }
+  ("function/simple_functions/asciiTable.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "function/simple_functions/asciiTable.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
 
   ("if/if1.wacc") should "be correctly parsed by our parser" in {
     val testFile = new File(validRootPath + "if/if1.wacc")
@@ -71,16 +64,12 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("IO/print/print-backspace.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "IO/print/print-backspace.wacc")
-  //   val formattedTest = formatTestFile(testFile)
-  //   val formattedParsedProgram = formatParserProgram(testFile)
-
-  //   println("formattedParsedProgram: " + formattedParsedProgram)
-  //   println("formattedTest:         " + formattedTest)
-
-  //   assert(formattedTest == formattedParsedProgram)
-  // }
+  ("IO/print/print-backspace.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "IO/print/print-backspace.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
 
   ("IO/read/echoBigInt.wacc") should "be correctly parsed by our parser" in {
     val testFile = new File(validRootPath + "IO/read/echoBigInt.wacc")
@@ -94,22 +83,32 @@ class WaccTestSuite extends AnyFlatSpec {
   //   val formattedTest = formatTestFile(testFile)
   //   val formattedParsedProgram = formatParserProgram(testFile)
   //   println("formattedParsedProgram: " + formattedParsedProgram)
-  //   println("formattedTest:         " + formattedTest)
+  //   println("formattedTest:          " + formattedTest)
   //   assert(formattedTest == formattedParsedProgram)
   // }
 
-  // ("pairs/checkRefPair.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "pairs/checkRefPair.wacc")
+  ("pairs/checkRefPair.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "pairs/checkRefPair.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  // ("runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc") should "be correctly parsed by our parser" in {
+  //   val testFile = new File(validRootPath + "runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc")
   //   val formattedTest = formatTestFile(testFile)
   //   val formattedParsedProgram = formatParserProgram(testFile)
+  //   println("formattedParsedProgram: " + formattedParsedProgram)
+  //   println("formattedTest           " + formattedTest)
   //   assert(formattedTest == formattedParsedProgram)
   // }
-
 
   ////////////// Helper functions
 
   def discardWhitespace(text : String) : String = {
-    text.replace(" ", "").replace("\n", "").replace("\t", "")
+    text.replace("\n", "").replace("\b", "").replace("\\t", "")
+        .replace("\\n", "").replace("\\b", "").replace("\t", "")
+        .replace(" ", "")
   }
 
   // Gets all text from a file without lines
@@ -120,15 +119,6 @@ class WaccTestSuite extends AnyFlatSpec {
       val lineWithoutWhitespace = discardWhitespace(line)
       val len = lineWithoutWhitespace.length
       if (len > 0) {
-        // for (j <- 0 to len - 1) {
-        //   if (lineWithoutWhitespace.charAt(j) == '#') {
-        //     // println(lineWithoutWhitespace + " j: " + j + lineWithoutWhitespace.slice(0, j))
-        //     val lineWithoutComments = lineWithoutWhitespace.slice(0, j)
-        //     formattedLines = formattedLines + lineWithoutComments
-        //   } else {
-        //     formattedLines = formattedLines + lineWithoutWhitespace
-        //   }
-        // }
         if (lineWithoutWhitespace.charAt(0) != '#') {
           formattedLines = formattedLines + line
         }

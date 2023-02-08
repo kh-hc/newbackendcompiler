@@ -71,7 +71,7 @@ object PrettyPrinters {
 
     def prettyPrintLValue(lValue : ast.Lvalue) : String = lValue match {
       case ast.Identifier(id)           => id
-      case ast.ArrayElem(id, position)  => prettyPrintExpr(id, false) + "[" + prettyPrintExprList(position) + "]"
+      case ast.ArrayElem(id, position)  => prettyPrintExpr(id, false) + prettyPrintExprListWithCommas(position) // prettyPrintExpr(id, false) + "[" + prettyPrintExprList(position) + "]"
       case ast.PairElemFst(pair)        => "fst " + prettyPrintLValue(pair)
       case ast.PairElemSnd(pair)        => "snd " + prettyPrintLValue(pair)
     }
@@ -82,26 +82,14 @@ object PrettyPrinters {
     }
 
     def prettyPrintRvalue(rValue : ast.Rvalue) : String = rValue match {
-      case ast.ArrayLiteral(value)           =>  prettyPrintExprList(value)
-      case ast.NewPair(exprLeft, exprRight)  =>  {"newpair (" + prettyPrintExpr(exprLeft, false) +
-                                                  ", " + prettyPrintExpr(exprRight, false) + ")"}
-      case ast.ParamCall(id, args)           => {
-        val arguments = args.args
-        var instruction = "" 
-        if (arguments.length > 0) {
-          val firstArg = arguments(0)
-          instruction = instruction + prettyPrintExpr(firstArg, false)
-          for (l <- 1 to arguments.length - 1) {
-            val expr = arguments(l)
-            instruction = instruction + ", " + prettyPrintExpr(expr, false)
-          } 
-        }
-        return "call " + prettyPrintExpr(id, false) + "(" + instruction + ")"
-      }
+      case ast.ArrayLiteral(value)           =>  "[" + prettyPrintExprListWithCommas(value) + "]"
+      case ast.NewPair(exprLeft, exprRight)  =>  {"newpair (" + prettyPrintExpr(exprLeft, true) +
+                                                  ", " + prettyPrintExpr(exprRight, true) + ")"}
+      case ast.ParamCall(id, args)           => "call " + prettyPrintExpr(id, false) + "(" + prettyPrintExprListWithCommas(args.args) + ")"
       case ast.NiladicCall(id)               => "call " + prettyPrintExpr(id, false) + "()"
       case ast.PairElemFst(pair)             => "fst " + prettyPrintLValue(pair)
       case ast.PairElemSnd(pair)             => "snd " + prettyPrintLValue(pair)
-      case default                           => prettyPrintExpr(rValue.asInstanceOf[ast.Expr], false)
+      case default                           => prettyPrintExpr(rValue.asInstanceOf[ast.Expr], true)
     }
 
     def prettyPrintType(t : ast.Type) : String = t match {
@@ -109,7 +97,7 @@ object PrettyPrinters {
       case ast.BoolT                  => "bool"
       case ast.CharT                  => "char"
       case ast.StringT                => "string"
-      case ast.ArrayType(arrayType)   => prettyPrintType(arrayType)
+      case ast.ArrayType(arrayType)   => prettyPrintType(arrayType) + "[]"
       case ast.PairType(left, right)  => {"pair (" + prettyPrintPairElemType(left) +
                                           ", " + prettyPrintPairElemType(right) + ")"}
     }
@@ -137,7 +125,7 @@ object PrettyPrinters {
           return str
         }
         case ast.PairLiteral              => "null"
-        case ast.ArrayElem(id, position)  => prettyPrintExpr(id, toPrint) + prettyPrintExprList(position)
+        case ast.ArrayElem(id, position)  => prettyPrintExpr(id, toPrint) + prettyPrintExprListWithCommas(position) // prettyPrintExpr(id, toPrint) + "[" + prettyPrintExprListWithCommas(position) + "]"
         case ast.ParenExpr(expr)          => "(" + prettyPrintExpr(expr, toPrint) + ")"
         case ast.Identifier(id)           => id
         
@@ -173,4 +161,16 @@ object PrettyPrinters {
         return instruction
     }
 
+    def prettyPrintExprListWithCommas(list : List[ast.Expr]) : String = {
+      var instruction = ""
+      if (list.length > 0) {
+        val firstArg = list(0)
+        instruction = instruction + prettyPrintExpr(firstArg, false)
+        for (l <- 1 to list.length - 1) {
+          val expr = list(l)
+          instruction = instruction + ", " + prettyPrintExpr(expr, false)
+        } 
+      }
+      return instruction
+    }
 }
