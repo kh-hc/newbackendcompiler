@@ -5,7 +5,7 @@ object SemanticAnalyzer {
     import SymbolTypes._    
 
     def analyzeProgram(ast: WACCprogram)  = {
-        var symbolTable = new SymbolTable(None)
+        val symbolTable = new SymbolTable(None)
         // Record function definitions in the symbol table as functions can be mutually recursive
         ast.funcs.map(symbolTable.add)
         // Analyze the body of the functions
@@ -17,7 +17,7 @@ object SemanticAnalyzer {
 
     def checkFunction(function: FunctionUnit, symbolTable: SymbolTable) = {
         // Create a symbol table for the new scope
-        var funcSymbols = new SymbolTable(Some(symbolTable))
+        val funcSymbols = new SymbolTable(Some(symbolTable))
         // Add each parameter into the new symbol table 
         function.params.paramlist.map(p => funcSymbols.add(p.id.id, p.t))
         // Analyze each statement in the body of the function
@@ -39,8 +39,8 @@ object SemanticAnalyzer {
             }
         }
         case ReassignStat(left, right) => {
-            var leftType = checkLvalue(left, symbolTable)
-            var rightType = checkRvalue(right, symbolTable)
+            val leftType = checkLvalue(left, symbolTable)
+            val rightType = checkRvalue(right, symbolTable)
             if (leftType != rightType){
                 if (!((leftType == AmbiguousSymbol) ^ (rightType == AmbiguousSymbol))){
                     throw new Exception("Type mismatch")
@@ -48,7 +48,11 @@ object SemanticAnalyzer {
             }
             return ()
         }
-        case ReadStat(value) => checkLvalue(value, symbolTable)
+        case ReadStat(value) => checkLvalue(value, symbolTable) match {
+            case IntSymbol => ()
+            case CharSymbol => ()
+            case default => throw new Exception("Tried to read to a non-int")
+        }
         case FreeStat(expr) =>  {
             checkExpression(expr, symbolTable) match {
                 case ArraySymbol(_) => ()
@@ -77,7 +81,7 @@ object SemanticAnalyzer {
     def checkEvaluatesTo(expr: Expr, symbolTable: SymbolTable, t: SymbolType): Unit = t match{
         case NoReturn => throw new Exception("Attempt to return from program body")
         case symbolType => {
-            var exprType = checkExpression(expr, symbolTable)
+            val exprType = checkExpression(expr, symbolTable)
             if (exprType != symbolType){
                 if (t == ArraySymbol(AmbiguousSymbol)){
                     exprType match{
@@ -102,7 +106,7 @@ object SemanticAnalyzer {
             case Some(value) => return value
         }
         case ArrayElem(id, positions) => {
-            var arrayType: SymbolType = st.lookupRecursive(id.id) match {
+            val arrayType: SymbolType = st.lookupRecursive(id.id) match {
                 case Some(value) => value
                 case None => throw new Exception("Value does not exist")
             }
@@ -151,74 +155,15 @@ object SemanticAnalyzer {
         case Or(left, right) => checkBoolExpr(left, right, st)
         case PairLiteral => return PairObjSymbol
     }
-/*
-    def checkExpression(expr: IntExpr, st: SymbolTable): SymbolType = IntSymbol
-    def checkExpression(expr: BoolExpr, st: SymbolTable): SymbolType = BoolSymbol
-    def checkExpression(expr: CharExpr, st: SymbolTable): SymbolType = CharSymbol
-    def checkExpression(expr: StrExpr, st: SymbolTable): SymbolType = StringSymbol
-    def checkExpression(expr: Identifier, st: SymbolTable): SymbolType = t.lookup(expr.id) match{
-        case None => throw new Exception("Attempted to access an undefined variable")
-        case Some(value) => return value
-    }
-    def checkExpression(expr: ArrayElem, st: SymbolTable): SymbolType = {
-        var arrayType: SymbolType = st.lookupRecursive(expr.id.id)
-        expr.position.map(p => checkEvaluatesTo(p, st, IntSymbol))
-        return getBaseType(arrayType)
-    }
-    def checkExpression(expr: ParenExpr, st: SymbolTable): SymbolType = checkExpression(expr.expr, st)
-    def checkExpression(expr: UnaryOp, st: SymbolTable): SymbolType = expr match{
-        case ChrOp(e) => {
-            checkEvaluatesTo(e, st, IntSymbol)
-            return CharSymbol
-        }
-        case LenOp(e)  => {
-            checkEvaluatesTo(e, st, ArraySymbol(AmbiguousSymbol))
-            return IntSymbol
-        }
-        case NegateOp(e)  => {
-            checkEvaluatesTo(e, st, IntSymbol)
-            return IntSymbol
-        }
-        case NotOp(e)  => {
-            checkEvaluatesTo(e, st, BoolSymbol)
-            return BoolSymbol
-        }
-        case OrdOp(e)  => {
-            checkEvaluatesTo(e, st, CharSymbol)
-            return IntSymbol
-        }
-    }
-    def checkExpression(expr: BinaryOp, st: SymbolTable): SymbolType = expr match{
-        case Div(left, right) => checkMathExpr(left, right, st)
-        case Mod(left, right) => checkMathExpr(left, right, st)
-        case Mul(left, right) => checkMathExpr(left, right, st)
-        case Add(left, right) => checkMathExpr(left, right, st)
-        case Sub(left, right) => checkMathExpr(left, right, st)
-        case GreaterThan(left, right) => checkOrderExpr(left, right, st)
-        case GreaterOrEqualThan(left, right) => checkOrderExpr(left, right, st)
-        case LessThan(left, right) => checkOrderExpr(left, right, st)
-        case LessOrEqualThan(left, right) => checkOrderExpr(left, right, st)
-        case Equal(left, right) => {
-            checkEqualExpr(left, right, st)
-            return BoolSymbol
-        }
-        case NotEqual(left, right) => {
-            checkEqualExpr(left, right, st)
-            return BoolSymbol
-        }
-        case And(left, right) => checkBoolExpr(left, right, st)
-        case Or(left, right) => checkBoolExpr(left, right, st)
-    }
-    def checkExpression(expr: PairLiteral, st: SymbolTable): SymbolType = PairObjSymbol
-*/
+
     def checkEqualExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
-        var exprType = checkExpression(exprL, st)
+        val exprType = checkExpression(exprL, st)
         checkEvaluatesTo(exprR, st, exprType)
         return exprType
     }
 
     def checkOrderExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
-        var t = checkEqualExpr(exprL, exprR, st)
+        val t = checkEqualExpr(exprL, exprR, st)
         if (t == IntSymbol || t == CharSymbol) {
             return BoolSymbol
         } else {
@@ -252,17 +197,9 @@ object SemanticAnalyzer {
         case expr => return checkExpression(expr.asInstanceOf[Expr], st)
     }
 
-    // def checkLvalue(ident: Identifier, st: SymbolTable): SymbolType = checkExpression(ident, st)
-    // def checkLvalue(arrayElem: ArrayElem, st: SymbolTable): SymbolType = checkExpression(arrayElem, st)
-    // def checkLvalue(pairElem: PairElemFst, st: SymbolTable): SymbolType = checkLvalue(pairElem.pair) match{
-    //     case TopPairSymbol(ft, st) => ft
-    //     case PairObjSymbol => PairObjSymbol
-    //     case _ => throw new Exception("Attempt to deference a non-pair element")
-    // }
-
     def checkRvalue(value: Rvalue, st: SymbolTable): SymbolType = value match{
         case ArrayLiteral(value) => {
-            var arrayTypes: List[SymbolType] = value.map(e => checkExpression(e, st))
+            val arrayTypes: List[SymbolType] = value.map(e => checkExpression(e, st))
             if (arrayTypes.length > 0) {
                 if (arrayTypes.distinct.length == 1){
                     return ArraySymbol(arrayTypes.head)
