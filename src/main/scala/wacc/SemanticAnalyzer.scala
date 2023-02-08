@@ -17,23 +17,34 @@ object SemanticAnalyzer {
 
     def checkFunction(function: FunctionUnit, symbolTable: SymbolTable) = {
         // Create a symbol table for the new scope
-        val funcSymbols = new SymbolTable(Some(symbolTable))
+        val argsSymbols = new SymbolTable(Some(symbolTable))
         // Add each parameter into the new symbol table 
-        function.params.paramlist.map(p => funcSymbols.add(p.id.id, p.t))
+        function.params.paramlist.map(p => argsSymbols.add(p.id.id, p.t))
         // Analyze each statement in the body of the function
-        checkStatement(function.body, funcSymbols, translate(function.t))
+        checkStatement(function.body, new SymbolTable(Some(argsSymbols)), translate(function.t))
     }
 
     def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = statement match{
         case SkipStat => ()
         case AssignStat(t, id, value) => {
             if (symbolTable.lookup(id.id).isEmpty){
-                if(checkRvalue(value, symbolTable) == translate(t)){
-                    symbolTable.add(id.id, t)
-                    return ()
-                } else {
-                    throw new Exception("Definition with conflicting types")
+                val expectedType = translate(t)
+                val providedType = checkRvalue(value, symbolTable)
+                if (expectedType != providedType) {
+                    providedType match {
+                        case PairLiteralSymbol => expectedType match {
+                            case TopPairSymbol(ft, st) => 
+                            case NestedPairSymbol => 
+                            case default => throw new Exception("Unexpected pair literal")
+                        }
+                        case ArraySymbol(AmbiguousSymbol) =>  
+                        case NestedPairSymbol => 
+                        case AmbiguousSymbol => 
+                        case default => throw new Exception("Definition with conflicting types")
+                    }
                 }
+                symbolTable.add(id.id, expectedType)
+                return ()
             } else {
                 throw new Exception("Variable already assigned to in this scope")
             }
@@ -42,9 +53,25 @@ object SemanticAnalyzer {
             val leftType = checkLvalue(left, symbolTable)
             val rightType = checkRvalue(right, symbolTable)
             if (leftType != rightType){
-                if (!((leftType == AmbiguousSymbol) ^ (rightType == AmbiguousSymbol))){
-                    throw new Exception("Type mismatch")
+                leftType match {
+                    case TopPairSymbol(ft, st) => rightType match {
+                        case NestedPairSymbol => 
+                        case PairLiteralSymbol => 
+                        case default => throw new Exception("Unexpected pair literal")
+                    }
+                    case ArraySymbol(AmbiguousSymbol) =>
+                    case AmbiguousSymbol => 
+                    case NestedPairSymbol => rightType match {
+                        case TopPairSymbol(ft, st) => 
+                        case NestedPairSymbol => 
+                        case PairLiteralSymbol => 
+                        case default => throw new Exception("Definition with conflicting types")
+                    }
+                    case default => throw new Exception("Definition with conflicting types")
                 }
+            }
+            if ((leftType == NestedPairSymbol) && (rightType == NestedPairSymbol)){
+                throw new Exception("Cannot reassign with ambiguous types on both sides")
             }
             return ()
         }
@@ -56,7 +83,7 @@ object SemanticAnalyzer {
         case FreeStat(expr) =>  {
             checkExpression(expr, symbolTable) match {
                 case ArraySymbol(_) => ()
-                case PairObjSymbol => ()
+                case NestedPairSymbol => ()
                 case TopPairSymbol(_, _) => ()
                 case default => throw new Exception("Tried to free a non-pair/array") 
             }
@@ -67,12 +94,12 @@ object SemanticAnalyzer {
         case PrintlnStat(expr) => checkExpression(expr, symbolTable)
         case IfStat(cond, ifStat, elseStat) =>  {
             checkEvaluatesTo(cond, symbolTable, BoolSymbol)
-            checkStatement(ifStat, symbolTable, returnType)
-            checkStatement(elseStat, symbolTable, returnType)
+            checkStatement(ifStat, new SymbolTable(Some(symbolTable)), returnType)
+            checkStatement(elseStat, new SymbolTable(Some(symbolTable)), returnType)
         }
         case WhileStat(cond, body) => {
             checkEvaluatesTo(cond, symbolTable, BoolSymbol)
-            checkStatement(body, symbolTable, returnType)
+            checkStatement(body, new SymbolTable(Some(symbolTable)), returnType)
         }
         case ScopeStat(stat) => checkStatement(stat, new SymbolTable(Some(symbolTable)), returnType)
         case SeqStat(stats) => stats.map(s => checkStatement(s, symbolTable, returnType))
@@ -101,7 +128,7 @@ object SemanticAnalyzer {
         case BoolExpr(_) => return BoolSymbol
         case CharExpr(_) => return CharSymbol
         case StrExpr(_) => return StringSymbol
-        case Identifier(id) => st.lookup(id) match {
+        case Identifier(id) => st.lookupRecursive(id) match {
             case None => throw new Exception("Attempted to access an undefined variable")
             case Some(value) => return value
         }
@@ -153,7 +180,7 @@ object SemanticAnalyzer {
         }
         case And(left, right) => checkBoolExpr(left, right, st)
         case Or(left, right) => checkBoolExpr(left, right, st)
-        case PairLiteral => return PairObjSymbol
+        case PairLiteral => return PairLiteralSymbol
     }
 
     def checkEqualExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
@@ -186,12 +213,14 @@ object SemanticAnalyzer {
     def checkLvalue(lValue: Lvalue, st: SymbolTable): SymbolType = lValue match {
         case PairElemFst(pair) => checkLvalue(pair, st) match{
             case TopPairSymbol(fst, snd) => return fst
-            case PairObjSymbol => return PairObjSymbol
+            case PairLiteralSymbol => return NestedPairSymbol
+            case NestedPairSymbol => return NestedPairSymbol
             case _ => throw new Exception("Attempt to deference a non-pair element")
         }
         case PairElemSnd(pair) => checkLvalue(pair, st) match{
             case TopPairSymbol(fst, snd) => return snd
-            case PairObjSymbol => return PairObjSymbol
+            case PairLiteralSymbol => return NestedPairSymbol
+            case NestedPairSymbol => return NestedPairSymbol
             case _ => throw new Exception("Attempt to deference a non-pair element")
         }
         case expr => return checkExpression(expr.asInstanceOf[Expr], st)
@@ -210,25 +239,41 @@ object SemanticAnalyzer {
                 return ArraySymbol(AmbiguousSymbol)
             }
         }
-        case NewPair(left, right) => TopPairSymbol(checkExpression(left, st), checkExpression(right, st))
-        case Call(id, args) => st.lookupRecursive(id.id) match {
+        case NewPair(left, right) => {
+            val symbolLeft = checkExpression(left, st)
+            val symbolRight = checkExpression(right, st)
+            TopPairSymbol(symbolLeft match {
+                case TopPairSymbol(ft, st) => NestedPairSymbol
+                case PairLiteralSymbol => NestedPairSymbol
+                case NestedPairSymbol => NestedPairSymbol
+                case default => default
+            }, symbolRight match {
+                case TopPairSymbol(ft, st) => NestedPairSymbol
+                case NestedPairSymbol => NestedPairSymbol
+                case PairLiteralSymbol => NestedPairSymbol
+                case default => default
+            })
+        }
+        case Call(id, args) => st.lookupFunctionRecursive(id.id) match {
             case Some(FunctionSymbol(returnT, argsT)) => {
                 matchArgs(argsT, args.args, st)
                 return returnT
             }
             case _ => throw new Exception("Attempted to call a function that does not exist")
         }
+        case PairElemFst(pair) => checkLvalue(value.asInstanceOf[Lvalue], st)
+        case PairElemSnd(pair) => checkLvalue(value.asInstanceOf[Lvalue], st)
         case expr => checkExpression(expr.asInstanceOf[Expr], st)
     }
 
-    def matchArgs(expected: List[SymbolType], provided: List[Expr], st: SymbolTable) = (
+    def matchArgs(expected: List[SymbolType], provided: List[Expr], st: SymbolTable) = {
         if (expected.length != provided.length){
             throw new Exception("Unexpected arguments provided")
-        } else {
+        } else { 
             if(expected != provided.map(e => checkExpression(e, st))){
                 throw new Exception("Arguments passed to this function do not match the expected types")
             }
         }
-    )
+    }
 
 }

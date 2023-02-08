@@ -15,7 +15,7 @@ object parser {
 
     private val identifier: Parsley[Identifier] = Identifier(IDENT)
 
-    private val arrayElem: Parsley[ArrayElem] = ArrayElem(identifier, many("[" *> expression <* "]"))
+    private val arrayElem: Parsley[ArrayElem] = attempt(ArrayElem(identifier, some("[" *> expression <* "]")))
 
     private lazy val pairElemType: Parsley[PairElemType] = "pair" #> NestedPair <|> PairElemTypeT(tiepe)
     

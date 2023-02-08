@@ -11,8 +11,10 @@ object Main {
 
         parse(myFile) match {
             case Success(x) => {
+                
                 try{
                     analyzeProgram(x)
+                    
                     sys.exit(0)
                 } finally {
                     sys.exit(200)
