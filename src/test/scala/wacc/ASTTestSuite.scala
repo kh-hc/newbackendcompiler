@@ -78,14 +78,12 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("IO/IOLoop.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "IO/IOLoop.wacc")
-  //   val formattedTest = formatTestFile(testFile)
-  //   val formattedParsedProgram = formatParserProgram(testFile)
-  //   println("formattedParsedProgram: " + formattedParsedProgram)
-  //   println("formattedTest:          " + formattedTest)
-  //   assert(formattedTest == formattedParsedProgram)
-  // }
+  ("IO/IOLoop.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "IO/IOLoop.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
 
   ("pairs/checkRefPair.wacc") should "be correctly parsed by our parser" in {
     val testFile = new File(validRootPath + "pairs/checkRefPair.wacc")
@@ -94,21 +92,68 @@ class WaccTestSuite extends AnyFlatSpec {
     assert(formattedTest == formattedParsedProgram)
   }
 
-  // ("runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc") should "be correctly parsed by our parser" in {
-  //   val testFile = new File(validRootPath + "runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc")
-  //   val formattedTest = formatTestFile(testFile)
-  //   val formattedParsedProgram = formatParserProgram(testFile)
-  //   println("formattedParsedProgram: " + formattedParsedProgram)
-  //   println("formattedTest           " + formattedTest)
-  //   assert(formattedTest == formattedParsedProgram)
-  // }
+  ("runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "runtimeErr/arrayOutOfBounds/arrayOutOfBounds.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("runtimeErr/divideByZero/divZero.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "runtimeErr/divideByZero/divZero.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("runtimeErr/integerOverflow/intJustOverflow.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "runtimeErr/integerOverflow/intJustOverflow.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("runtimeErr/nullDereference/freeNull.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "runtimeErr/nullDereference/freeNull.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("scope/ifNested1.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "scope/ifNested1.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("sequence/charAssignment.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "sequence/charAssignment.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("variables/capCharDeclaration.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "variables/capCharDeclaration.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
+
+  ("while/min.wacc") should "be correctly parsed by our parser" in {
+    val testFile = new File(validRootPath + "while/min.wacc")
+    val formattedTest = formatTestFile(testFile)
+    val formattedParsedProgram = formatParserProgram(testFile)
+    assert(formattedTest == formattedParsedProgram)
+  }
 
   ////////////// Helper functions
 
   def discardWhitespace(text : String) : String = {
     text.replace("\n", "").replace("\b", "").replace("\\t", "")
         .replace("\\n", "").replace("\\b", "").replace("\t", "")
-        .replace(" ", "")
+        .replace(" ", "").replace("\\", "")
   }
 
   // Gets all text from a file without lines
@@ -120,7 +165,16 @@ class WaccTestSuite extends AnyFlatSpec {
       val len = lineWithoutWhitespace.length
       if (len > 0) {
         if (lineWithoutWhitespace.charAt(0) != '#') {
-          formattedLines = formattedLines + line
+          if (!lineWithoutWhitespace.contains('#')) {
+            formattedLines = formattedLines + line
+          } else {
+            for (i <- 0 to line.length - 1) {
+              val char = line.charAt(i)
+              if (char == '#') {
+                formattedLines = formattedLines + line.slice(0, i)
+              }
+            }
+          }
         }
       }
     }

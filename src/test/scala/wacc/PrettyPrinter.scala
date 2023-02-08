@@ -2,6 +2,8 @@ package wacc
 
 import wacc.{abstractSyntaxTree => ast}
 
+// This follows the style of the AST and WACC Language spec - see those for further details
+
 object PrettyPrinters {
     // Pretty prints the a WACCprogram line
     def prettyPrintFunction(functionLine : ast.FunctionUnit) : String = functionLine match {
