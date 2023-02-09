@@ -158,11 +158,15 @@ class WaccTestSuite extends AnyFlatSpec {
 
   // Gets all text from a file without lines
   def getTextFromFile(file : File) : String = {
+    // Get the lines from the file
     val lines = Source.fromFile(file).getLines()
     var formattedLines = ""
     for (line <- lines) {
+      // Remove the whitespace and certain special characters from the line
       val lineWithoutWhitespace = discardWhitespace(line)
       val len = lineWithoutWhitespace.length
+      // Remove any comments from the line
+      // Includes comments which start partway through the line
       if (len > 0) {
         if (lineWithoutWhitespace.charAt(0) != '#') {
           if (!lineWithoutWhitespace.contains('#')) {
@@ -189,19 +193,18 @@ class WaccTestSuite extends AnyFlatSpec {
 
   // Parse the test file and format it for comparison
   def formatParserProgram(file : File) : String = {
+    // WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)
     val parsedProgram = parser.parse(file).get
     val functions = parsedProgram.funcs
     val statement = parsedProgram.stat
     
     var parsedProgramLines = "begin"
+    // Parse each FunctionUnit in the list
     for (function <- functions) {
       parsedProgramLines = parsedProgramLines + PrettyPrinters.prettyPrintFunction(function)
     }
-    parsedProgramLines = parsedProgramLines + PrettyPrinters.prettyPrintStatement(statement)
-    while (parsedProgramLines.charAt(parsedProgramLines.length - 1) == ';') {
-      parsedProgramLines = parsedProgramLines.slice(0, parsedProgramLines.length - 2)
-    }
-    parsedProgramLines = parsedProgramLines + "end"
+    parsedProgramLines = parsedProgramLines + PrettyPrinters.prettyPrintStatement(statement) + "end"
+    // Remove any whitespace and certain special characters
     discardWhitespace(parsedProgramLines)
   }
 }
