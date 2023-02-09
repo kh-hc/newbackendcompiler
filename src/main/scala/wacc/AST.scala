@@ -6,16 +6,21 @@ object abstractSyntaxTree {
     import parsley.position._
     import parsley.implicits.zipped._
 
-    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int))
-
+    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int)) 
+    
     case class FunctionUnit(t: Type, id: Identifier, params: ParamList, body: StatementUnit)(val pos: (Int, Int))
 
-    case class ParamList(paramlist: List[Param])(val pos: (Int, Int))
+    case class ParamList(paramlist: List[Param])(val pos: (Int, Int)) 
 
-    case class Param(t: Type, id: Identifier)(val pos: (Int, Int))
+    case class Param(t: Type, id: Identifier)(val pos: (Int, Int)) 
 
-    sealed trait StatementUnit
-    case object SkipStat extends StatementUnit with ParserBridge0[StatementUnit] 
+    sealed trait StatementUnit {
+        val pos: (Int, Int)
+    } 
+    case object SkipStat extends StatementUnit with ParserBridgePos0[StatementUnit] {
+      override val pos: (Int, Int) = (0,0) // cannot get position here so return incorrect pos
+    }
+
     case class AssignStat(t: Type, id: Identifier, value: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReassignStat(left: Lvalue, right: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReadStat(value: Lvalue)(val pos: (Int, Int)) extends StatementUnit
@@ -29,14 +34,18 @@ object abstractSyntaxTree {
     case class ScopeStat(body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class SeqStat(statements: List[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
 
-    sealed trait Lvalue
+    sealed trait Lvalue {
+        val pos: (Int, Int)
+    }
 
     sealed trait PairElem extends Rvalue with Lvalue
 
     case class PairElemFst(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
     case class PairElemSnd(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
 
-    sealed trait Rvalue
+    sealed trait Rvalue {
+        val pos: (Int, Int)
+    }
     sealed trait Expr extends Rvalue
     case class ArrayLiteral(value: List[Expr])(val pos: (Int, Int)) extends Rvalue
     case class NewPair(exprLeft: Expr, exprRight: Expr)(val pos: (Int, Int)) extends Rvalue
@@ -45,6 +54,7 @@ object abstractSyntaxTree {
     case class ArgList(args: List[Expr])(val pos: (Int, Int))
 
     sealed trait Type
+    
     sealed trait BaseType extends Type
     case object IntT extends BaseType with ParserBridgePos0[Type]
     case object BoolT extends BaseType with ParserBridgePos0[Type]
@@ -62,7 +72,11 @@ object abstractSyntaxTree {
     case class BoolExpr(value: Boolean)(val pos: (Int, Int)) extends Expr0
     case class CharExpr(value: Char)(val pos: (Int, Int)) extends Expr0
     case class StrExpr(value: String)(val pos: (Int, Int)) extends Expr0
-    case object PairLiteral extends Expr0 with ParserBridge0[Expr0]
+    case object PairLiteral extends Expr0 with ParserBridge0[Expr0] {
+
+      override val pos: (Int, Int) = (0,0) // cannot get position
+
+    }
     case class ArrayElem(id: Identifier, position: List[Expr])(val pos: (Int, Int)) extends Expr0 with Lvalue
     case class ParenExpr(expr: Expr)(val pos: (Int, Int)) extends Expr0
     case class Identifier(id: String)(val pos: (Int, Int)) extends Expr0 with Lvalue
