@@ -6,14 +6,10 @@ import wacc.{abstractSyntaxTree => ast}
 
 object PrettyPrinters {
     // Pretty prints the a WACCprogram line
-    def prettyPrintFunction(functionLine : ast.FunctionUnit) : String = functionLine match {
-      case ast.ParamFunc(t, id, params, body) => {prettyPrintType(t) + " " +
-                                                  prettyPrintExpr(id) + "(" +
-                                                  prettyPrintParamList(params) + ") is\n" +
-                                                  prettyPrintStatement(body) + "\nend"}
-      case ast.NiladicFunc(t, id, body)       => {prettyPrintType(t) + " " +
-                                                  prettyPrintExpr(id) + "() is\n" +
-                                                  prettyPrintStatement(body) + "\nend"}
+    def prettyPrintFunction(functionLine : ast.FunctionUnit) : String = {
+      prettyPrintType(functionLine.t) + " " +
+      prettyPrintExpr(functionLine.id) + "(" + prettyPrintParamList(functionLine.params) +
+      ") is\n" + prettyPrintStatement(functionLine.body) + "\nend"
     }
 
     def prettyPrintParamList(params : ast.ParamList) : String = {
@@ -90,8 +86,7 @@ object PrettyPrinters {
                                                   ", " + prettyPrintExpr(exprRight) + ")"}
       case ast.PairElemFst(pair)             => "fst " + prettyPrintLValue(pair)
       case ast.PairElemSnd(pair)             => "snd " + prettyPrintLValue(pair)      
-      case ast.ParamCall(id, args)           => "call " + prettyPrintExpr(id) + "(" + prettyPrintExprListWithCommas(args.args) + ")"
-      case ast.NiladicCall(id)               => "call " + prettyPrintExpr(id) + "()"
+      case ast.Call(id, args)           => "call " + prettyPrintExpr(id) + "(" + prettyPrintExprListWithCommas(args.args) + ")"
       case default                           => prettyPrintExpr(rValue.asInstanceOf[ast.Expr])
     }
 
