@@ -7,6 +7,7 @@ object parser {
     import parsley.combinator._
     import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
+    import parsley.character.whitespace
     import java.io.File
 
     import lexer._
@@ -40,7 +41,6 @@ object parser {
     private lazy val func: Parsley[FunctionUnit] = (attempt(FunctionUnit(tiepe.label("type"), identifier.label("identifier"),
             ("(" *> paramList.label("parameter list") <* ")"), 
             ("is" *> statement.label("statement") <* "end").filter(stats => endsInRet(stats)))))
-
 
     private lazy val paramList: Parsley[ParamList] = ParamList(sepBy(param, (",")))
         .label("Parameter list")
@@ -77,13 +77,12 @@ object parser {
         <|> arrayLiteral
         <|> NewPair("newpair" *> "(" *> expression <* ",", expression <* ")")
         <|> pairElem
-        <|> attempt(ParamCall("call" *> identifier <* "(", argList <* ")")))
+        <|> attempt(Call("call" *> identifier <* "(", argList <* ")")))
         .label("Right Value")
 
     private val pairElem: Parsley[PairElem] = (PairElemFst("fst" *> lValue)
         <|> PairElemSnd("snd" *> lValue))
         .label("Pair element")
-
         
     private val arrayLiteral: Parsley[ArrayLiteral] = ArrayLiteral("[" *> sepBy(expression, ",") <* "]")
         .label("Array Literal")
@@ -118,9 +117,8 @@ object parser {
           "'+', '-', '*', '/', '%'.\nUnary operations are prefix notated and can be: \n    '!', '-', 'len', " +
           "'ord', 'chr'")
 
-    private val argList: Parsley[ArgList] = ArgList(sepBy(expression, ","))
-        .label("Argument list")
-
+    private val argList: Parsley[ArgList] = ArgList(sepBy(expression, ",")).label("Argument list")
+    
     private val program: Parsley[WACCprogram] = fully(WACCprogram("begin" *> many(func), statement <* "end"))
         .label("WACC program")
 

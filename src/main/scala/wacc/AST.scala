@@ -20,6 +20,7 @@ object abstractSyntaxTree {
     case object SkipStat extends StatementUnit with ParserBridgePos0[StatementUnit] {
       override val pos: (Int, Int) = (0,0) // cannot get position here so return incorrect pos
     }
+
     case class AssignStat(t: Type, id: Identifier, value: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReassignStat(left: Lvalue, right: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReadStat(value: Lvalue)(val pos: (Int, Int)) extends StatementUnit
@@ -48,12 +49,12 @@ object abstractSyntaxTree {
     sealed trait Expr extends Rvalue
     case class ArrayLiteral(value: List[Expr])(val pos: (Int, Int)) extends Rvalue
     case class NewPair(exprLeft: Expr, exprRight: Expr)(val pos: (Int, Int)) extends Rvalue
-    sealed trait Call extends Rvalue
-    case class ParamCall(id: Identifier, args: ArgList)(val pos: (Int, Int)) extends Call
+    case class Call(id: Identifier, args: ArgList)(val pos: (Int, Int)) extends Rvalue
 
-    case class ArgList(args: List[Expr])(val pos: (Int, Int)) 
+    case class ArgList(args: List[Expr])(val pos: (Int, Int))
 
-    sealed trait Type 
+    sealed trait Type
+    
     sealed trait BaseType extends Type
     case object IntT extends BaseType with ParserBridgePos0[Type]
     case object BoolT extends BaseType with ParserBridgePos0[Type]
@@ -91,26 +92,28 @@ object abstractSyntaxTree {
     sealed trait Expr6 extends Expr
 
     // Unary Operators
-    case class NotOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0
-    case class NegateOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0
-    case class LenOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0
-    case class OrdOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0
-    case class ChrOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0
+    sealed trait UnaryOp
+    case class NotOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
+    case class NegateOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
+    case class LenOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
+    case class OrdOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
+    case class ChrOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
 
     // note left-associativitiy so typing is (B,A) => B
-    case class Div(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1
-    case class Mod(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1
-    case class Mul(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1
-    case class Add(exprLeft: Expr2, exprRight: Expr1)(val pos: (Int, Int)) extends Expr2
-    case class Sub(exprLeft: Expr2, exprRight: Expr1)(val pos: (Int, Int)) extends Expr2
-    case class GreaterThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3
-    case class GreaterOrEqualThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3
-    case class LessThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3
-    case class LessOrEqualThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3
-    case class Equal(exprLeft: Expr4, exprRight: Expr4)(val pos: (Int, Int)) extends Expr4
-    case class NotEqual(exprLeft: Expr4, exprRight: Expr4)(val pos: (Int, Int)) extends Expr4
-    case class And(exprLeft: Expr5, exprRight: Expr4)(val pos: (Int, Int)) extends Expr5
-    case class Or(exprLeft: Expr6, exprRight: Expr5)(val pos: (Int, Int)) extends Expr6
+    sealed trait BinaryOp
+    case class Div(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with BinaryOp
+    case class Mod(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with BinaryOp 
+    case class Mul(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with BinaryOp 
+    case class Add(exprLeft: Expr2, exprRight: Expr1)(val pos: (Int, Int)) extends Expr2 with BinaryOp 
+    case class Sub(exprLeft: Expr2, exprRight: Expr1)(val pos: (Int, Int)) extends Expr2 with BinaryOp 
+    case class GreaterThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3 with BinaryOp 
+    case class GreaterOrEqualThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3 with BinaryOp 
+    case class LessThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3 with BinaryOp 
+    case class LessOrEqualThan(exprLeft: Expr3, exprRight: Expr2)(val pos: (Int, Int)) extends Expr3 with BinaryOp 
+    case class Equal(exprLeft: Expr4, exprRight: Expr4)(val pos: (Int, Int)) extends Expr4 with BinaryOp 
+    case class NotEqual(exprLeft: Expr4, exprRight: Expr4)(val pos: (Int, Int)) extends Expr4 with BinaryOp 
+    case class And(exprLeft: Expr5, exprRight: Expr4)(val pos: (Int, Int)) extends Expr5 with BinaryOp 
+    case class Or(exprLeft: Expr6, exprRight: Expr5)(val pos: (Int, Int)) extends Expr6 with BinaryOp 
 
     // PositionBridges
     trait ParserBridgePosSingleton[+A] {
@@ -175,7 +178,7 @@ object abstractSyntaxTree {
 
     object ArrayLiteral extends ParserBridgePos1[List[Expr], ArrayLiteral]
     object NewPair extends ParserBridgePos2[Expr, Expr, NewPair]
-    object ParamCall extends ParserBridgePos2[Identifier, ArgList, Call]
+    object Call extends ParserBridgePos2[Identifier, ArgList, Call]
 
     object ArgList extends ParserBridgePos1[List[Expr], ArgList]
 
