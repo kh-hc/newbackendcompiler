@@ -12,7 +12,7 @@ class SymbolTable(val parent: Option[SymbolTable]) {
         if (lookupFunction(func.id.id).isEmpty){
             functionTable = functionTable + (func.id.id -> FunctionSymbol(translate(func.t), func.params.paramlist.map(p => translate(p.t))))
         } else {
-            throw new Error("Attempt to redefine a variable or function")
+            throw new Exception("Attempt to redefine a variable or function")
         }
     )
 
@@ -24,7 +24,7 @@ class SymbolTable(val parent: Option[SymbolTable]) {
         if (lookup(name).isEmpty){
             table = table + (name -> t)
         } else {
-            throw new Error("Attempt to redefine a variable or function")
+            throw new Exception("Attempt to redefine a variable or function")
         }
     )
 
