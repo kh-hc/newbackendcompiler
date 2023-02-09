@@ -32,6 +32,17 @@ object SemanticAnalyzer {
                 val providedType = checkRvalue(value, symbolTable)
                 if (expectedType != providedType) {
                     providedType match {
+                        case TopPairSymbol(a, b) => expectedType match {
+                            case TopPairSymbol(x, y) => {
+                                if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
+                                && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))){
+                                    throw new Exception("Non matching pair types")
+                                }
+                            }
+                            case NestedPairSymbol => 
+                            case PairLiteralSymbol =>
+                            case default => throw new Exception("Unexpected pair literal")
+                        }
                         case PairLiteralSymbol => expectedType match {
                             case TopPairSymbol(ft, st) => 
                             case NestedPairSymbol => 
@@ -59,14 +70,17 @@ object SemanticAnalyzer {
                         case PairLiteralSymbol => 
                         case default => throw new Exception("Unexpected pair literal")
                     }
-                    case ArraySymbol(AmbiguousSymbol) =>
-                    case AmbiguousSymbol => 
-                    case NestedPairSymbol => rightType match {
-                        case TopPairSymbol(ft, st) => 
-                        case NestedPairSymbol => 
-                        case PairLiteralSymbol => 
+                    case ArraySymbol(AmbiguousSymbol) => rightType match {
+                        case ArraySymbol(x) =>
                         case default => throw new Exception("Definition with conflicting types")
                     }
+                    case AmbiguousSymbol =>
+                    case PairLiteralSymbol =>  rightType match {
+                        case TopPairSymbol(ft, st) => 
+                        case NestedPairSymbol =>
+                        case default => throw new Exception("Definition with conflicting types")
+                    }
+                    case NestedPairSymbol =>
                     case default => throw new Exception("Definition with conflicting types")
                 }
             }
@@ -107,15 +121,35 @@ object SemanticAnalyzer {
 
     def checkEvaluatesTo(expr: Expr, symbolTable: SymbolTable, t: SymbolType): Unit = t match{
         case NoReturn => throw new Exception("Attempt to return from program body")
+        case NestedPairSymbol => return ()
+        case TopPairSymbol(x, y) => {
+            val exprType = checkExpression(expr, symbolTable)
+            if (exprType != t){
+                exprType match{
+                    case NestedPairSymbol => return ()
+                    case PairLiteralSymbol => return ()
+                    case _ => throw new Exception("Non-matching pairs")
+                }
+            }
+        }
         case symbolType => {
             val exprType = checkExpression(expr, symbolTable)
             if (exprType != symbolType){
-                if (t == ArraySymbol(AmbiguousSymbol)){
+                if (exprType == NestedPairSymbol) {
+                    return ()
+                }
+                if (symbolType == ArraySymbol(AmbiguousSymbol)){
                     exprType match{
                         case ArraySymbol(subtype) => return ()
                         case _ => throw new Exception("Expression did not evalute to correct type")
                     }
-                }else{
+                } else if (symbolType == PairLiteralSymbol) {
+                    exprType match {
+                        case TopPairSymbol(x, y) =>
+                        case _ => throw new Exception("Non-matching pairs exception")
+                    }
+                } 
+                else {
                     throw new Exception("Expression did not evalute to correct type")
                 }
             }
@@ -243,12 +277,12 @@ object SemanticAnalyzer {
             val symbolLeft = checkExpression(left, st)
             val symbolRight = checkExpression(right, st)
             TopPairSymbol(symbolLeft match {
-                case TopPairSymbol(ft, st) => NestedPairSymbol
+                case TopPairSymbol(ft, st) => PairLiteralSymbol
                 case PairLiteralSymbol => NestedPairSymbol
                 case NestedPairSymbol => NestedPairSymbol
                 case default => default
             }, symbolRight match {
-                case TopPairSymbol(ft, st) => NestedPairSymbol
+                case TopPairSymbol(ft, st) => PairLiteralSymbol
                 case NestedPairSymbol => NestedPairSymbol
                 case PairLiteralSymbol => NestedPairSymbol
                 case default => default

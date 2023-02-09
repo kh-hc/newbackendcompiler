@@ -86,7 +86,7 @@ object SymbolTypes {
             case ArrayType(n) => ArraySymbol(translate(n))
             case PairType(fst, snd) => TopPairSymbol(translate(fst), translate(snd))
             case PairElemTypeT(n) => translate(n)
-            case NestedPair => NestedPairSymbol
+            case NestedPair => PairLiteralSymbol
         }
 
     def derefType(t: SymbolType, layers: Int): SymbolType = if (layers == 0) {
