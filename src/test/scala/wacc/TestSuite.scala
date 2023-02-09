@@ -14,8 +14,8 @@ class WaccTestSuite extends AnyFlatSpec {
   println("Initializing invalid program test cases (syntax)")
   testDirectory(rootPath + "invalid/syntaxErr/", 100)
 
-  // println("Initializing invalid program test cases (semantics)")
-  // testDirectory(rootPath + "invalid/semanticErr/", 200)  
+  println("Initializing invalid program test cases (semantics)")
+  testDirectory(rootPath + "invalid/semanticErr/", 200)  
 
   def testDirectory(directoryPath: String, exitCode: Int) : Unit = {
     // Extract all the files from the subdirectories (and their subdirectories)
@@ -25,14 +25,14 @@ class WaccTestSuite extends AnyFlatSpec {
     // Loop through the test files and check our parser works
     for (file <- testFiles) {
         val filePath = directoryPath + file
-        val testCorrect = run(filePath) == exitCode
+        val test = run(filePath)
 
         (s"Program '$filePath' ") should s"return an exit code of $exitCode" in {   
-            assert(testCorrect)
+            assert(test == exitCode)
         }
-        if (testCorrect) {
+        if (test == exitCode) {
           filesPassed = filesPassed + 1
-        }
+        } 
         filesTested = filesTested + 1
     }
 

@@ -2,6 +2,7 @@ package wacc
 
 import parser.parse
 import parsley.{Success, Failure}
+import SemanticAnalyzer.analyzeProgram
 import java.io.File
 
 object Main {
@@ -9,7 +10,16 @@ object Main {
         val myFile = new File(args.head)
 
         parse(myFile) match {
-            case Success(x) => sys.exit(0)
+            case Success(x) => {
+                
+                try{
+                    analyzeProgram(x)
+                    
+                    sys.exit(0)
+                } finally {
+                    sys.exit(200)
+                }
+            }
             case Failure(x) => sys.exit(100)
         }
     }

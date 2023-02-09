@@ -8,6 +8,7 @@ object lexer {
     import parsley.token.predicate.{Unicode, Basic}
     import parsley.Parsley.{attempt, notFollowedBy}
     import parsley.character.{char, digit}
+    import parsley.errors.combinator._
 
     private val waccDesc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
@@ -19,8 +20,8 @@ object lexer {
                                 "return", "exit", "print", "println", "if", 
                                 "then", "else", "fi", "while", "do", "done", 
                                 "fst", "snd", "newpair", "call", "int", 
-                                "bool", "char", "string", "pair", "true", "false", "null"),
-            hardOperators = Set("!", "-", "len", "ord", "chr", "*", "/", "%",
+                                "bool", "char", "string", "pair", "true", "false", "null" , "len", "ord", "chr"),
+            hardOperators = Set("!", "-", "*", "/", "%",
                                 "+", ">", ">=", "<", "<=", "==", "!=", "&&", "||"),
         ),
         numeric.NumericDesc.plain.copy(),
@@ -46,14 +47,14 @@ object lexer {
 
     private val lexer = new Lexer(waccDesc)
 
-    val IDENT = lexer.lexeme.names.identifier
+    val IDENT = lexer.lexeme.names.identifier.label("Identifier")
 
     // define POS and NEG numbers
-    private val NEG = (char('-') *> lexer.lexeme(attempt(lexer.lexeme.numeric.integer.number32))).map(x => x * -1)
-    private val NUM = lexer.lexeme.numeric.integer.number32
+    private val NEG = ((char('-') *> attempt(lexer.lexeme.numeric.integer.number32)).map(x => x * -1)).label("Negative number")
+    private val NUM = lexer.lexeme.numeric.integer.number32.label("Number")
 
     // define NEGATE
-    val NEGATE = lexer.lexeme(attempt(char('-') ~> notFollowedBy(digit)))
+    val NEGATE = lexer.lexeme(attempt(char('-') ~> notFollowedBy(digit))).label("Negation")
 
     val INT = lexer.lexeme(attempt(NEG)) <|> NUM
     val STRING = lexer.lexeme.text.string.ascii
