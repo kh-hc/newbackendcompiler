@@ -191,7 +191,7 @@ object WACCErrors {
 
       override def pos(line: Int, col: Int): Position = (line, col)
 
-      override def source(sourceName: Option[String]): Source = sourceName.map(name => s"name")
+      override def source(sourceName: Option[String]): Source = sourceName.map(name => s"$name")
 
       override def vanillaError(unexpected: UnexpectedLine, expected: ExpectedLine, reasons: Messages, line: LineInfo): ErrorInfoLines = 
         SyntacticError(unexpected, expected, reasons, line)
