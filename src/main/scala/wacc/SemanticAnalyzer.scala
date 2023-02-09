@@ -24,7 +24,8 @@ object SemanticAnalyzer {
         checkStatement(function.body, new SymbolTable(Some(argsSymbols)), translate(function.t))
     }
 
-    def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = statement match{
+    def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = {
+        statement match{
         case SkipStat => ()
         case AssignStat(t, id, value) => {
             if (symbolTable.lookup(id.id).isEmpty){
@@ -48,7 +49,30 @@ object SemanticAnalyzer {
                             case NestedPairSymbol => 
                             case default => throw new Exception("Unexpected pair literal")
                         }
-                        case ArraySymbol(AmbiguousSymbol) =>  
+                        case ArraySymbol(AmbiguousSymbol) => expectedType match{
+                            case ArraySymbol(x) =>
+                            case default => throw new Exception("Non-matching arrays")
+                        }
+                        case ArraySymbol(TopPairSymbol(x, y)) => expectedType match{
+                            case ArraySymbol(TopPairSymbol(a, b)) => {
+                                if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
+                                && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))){
+                                    throw new Exception("Non matching pair types")
+                                }
+                            }
+                            case ArraySymbol(NestedPairSymbol) => 
+                            case ArraySymbol(PairLiteralSymbol) =>
+                            case default => throw new Exception("Non matching array types")
+                        }
+                        case ArraySymbol(PairLiteralSymbol) => expectedType match {
+                            case ArraySymbol(TopPairSymbol(ft, st)) => 
+                            case ArraySymbol(NestedPairSymbol) => 
+                            case default => throw new Exception("Non matching array types")
+                        }
+                        case ArraySymbol(NestedPairSymbol) => expectedType match {
+                            case ArraySymbol(x) =>
+                            case default => throw new Exception("Non matching array types")
+                        }
                         case NestedPairSymbol => 
                         case AmbiguousSymbol => 
                         case default => throw new Exception("Definition with conflicting types")
@@ -117,7 +141,7 @@ object SemanticAnalyzer {
         }
         case ScopeStat(stat) => checkStatement(stat, new SymbolTable(Some(symbolTable)), returnType)
         case SeqStat(stats) => stats.map(s => checkStatement(s, symbolTable, returnType))
-    }
+    }}
 
     def checkEvaluatesTo(expr: Expr, symbolTable: SymbolTable, t: SymbolType): Unit = t match{
         case NoReturn => throw new Exception("Attempt to return from program body")
@@ -304,9 +328,7 @@ object SemanticAnalyzer {
         if (expected.length != provided.length){
             throw new Exception("Unexpected arguments provided")
         } else { 
-            if(expected != provided.map(e => checkExpression(e, st))){
-                throw new Exception("Arguments passed to this function do not match the expected types")
-            }
+            (expected, provided).zipped.map((ex, pr) => checkEvaluatesTo(pr, st, ex))            
         }
     }
 
