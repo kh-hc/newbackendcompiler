@@ -3,13 +3,14 @@ package wacc
 import parsley.errors.ErrorBuilder
 import parsley.errors.tokenextractors
 import abstractSyntaxTree._
+import SymbolTypes._
 
 object WACCErrors {
     case class WACCError(pos: (Int, Int), file: String, lines: WACCErrorLines) {
         override def toString: String = {
-            ("Error type: " + lines.errorType + "\n" +
-             "In file: " + file + ", at position: " + pos + "\n" +
-             lines + "\n"
+            (s"${lines.errorType} error " +
+             "in file: " + file + ", at position: " + pos + "\n" +
+             lines.errorLines.mkString("\n") + "\n\n"
             )
         }
     }
@@ -32,25 +33,25 @@ object WACCErrors {
     }
 
 
-    case class unexpectedType(unexpected: Type, expecteds: Set[Type]) extends SemanticError {
-        override val errorLines: Seq[String] = Seq(s"| Type error. \nExpected: ${expecteds.mkString("\n")}" +
+    case class unexpectedType(unexpected: SymbolType, expected: SymbolType) extends SemanticError {
+        override val errorLines: Seq[String] = Seq(s"| Type error. \n| Expected: ${expected}" +
                                                 s"\n| Actual: $unexpected")
     }
 
     case class varAlreadyAss(id: Identifier) extends SemanticError {
-        override val errorLines: Seq[String] = Seq(s"| Variable ${id.id} is already definde in this scope.")
+        override val errorLines: Seq[String] = Seq(s"| Variable ${id.id} is already defined in this scope.")
     }
 
-    case class ambiguousTypesReAss(pair: PairType, left: PairElemType, right: PairElemType) extends SemanticError {
+    case class ambiguousTypesReAss(s: StatementUnit, left: Lvalue, right: Rvalue) extends SemanticError {
       override val errorLines: Seq[String] = Seq(s"| Cannot reassign with ambiguous types on both sides,\n| left:" + 
                                                 s"$left, and right: $right")
     }
 
-    case class readError(lval: Lvalue, typeRec: Type) extends SemanticError {
+    case class readError(lval: Lvalue, typeRec: SymbolType) extends SemanticError {
       override val errorLines: Seq[String] = Seq(s"| Cannot read values of type: $typeRec. Please supply an int or char.")
     }
 
-    case class freeError(expr: Expr, typeRec: Type) extends SemanticError {
+    case class freeError(expr: Expr, typeRec: SymbolType) extends SemanticError {
       override val errorLines: Seq[String] = Seq(s"| Tried to free expression of type: $typeRec, can only free values of type pair and array.")
     }
 
@@ -66,12 +67,16 @@ object WACCErrors {
       override val errorLines: Seq[String] = Seq(s"| Value $id does not exist.")
     }
 
-    case class derefErr(lval: Lvalue, t: Type) extends SemanticError {
+    case class derefErr(lval: Lvalue, t: SymbolType) extends SemanticError {
       override val errorLines: Seq[String] = Seq(s"| Tried to dereference something of type $t, but can only dereference things of type pair.")
     }
 
-    case class arrayType(rval: Rvalue, t: Set[Type]) extends SemanticError {
-      override val errorLines: Seq[String] = Seq(s"| Array has types ${t.mkString(",")}, but arrays can have only one type.")
+    case class derefErrE(e: Expr) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Invalid dereferencing of array.")
+    }
+
+    case class arrayTypeErr(rval: Rvalue, t: SymbolType) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Array expects values of type $t, but has values of different types.")
     }
 
     case class undefFunc(id: Identifier) extends SemanticError {
@@ -83,8 +88,14 @@ object WACCErrors {
     }
 
     object unexpectedTypeStat {
-      def err(s: StatementUnit, unexpected: Type, expecteds: Set[Type])(implicit file: String): WACCError = {
+      def err(s: StatementUnit, unexpected: SymbolType, expecteds: SymbolType)(implicit file: String): WACCError = {
         WACCError(s.pos, file, unexpectedType(unexpected, expecteds))
+      }
+    }
+
+    object unexpectedTypeExpr {
+      def err(e: Expr, unexpected: SymbolType, expecteds: SymbolType)(implicit file: String): WACCError = {
+        WACCError(e.pos, file, unexpectedType(unexpected, expecteds))
       }
     }
 
@@ -95,19 +106,19 @@ object WACCErrors {
     }
 
     object ambiguousTypesReAss {
-      def err(pair: PairType, left: PairElemType, right: PairElemType)(implicit file: String): WACCError = {
-        WACCError(pair.pos, file, ambiguousTypesReAss(pair, left, right))
+      def err(s: StatementUnit, left: Lvalue, right: Rvalue)(implicit file: String): WACCError = {
+        WACCError(s.pos, file, ambiguousTypesReAss(s, left, right))
       }
     }
 
     object readError {
-      def err(lval: Lvalue, typeRec: Type)(implicit file: String): WACCError = {
+      def err(lval: Lvalue, typeRec: SymbolType)(implicit file: String): WACCError = {
         WACCError(lval.pos, file, readError(lval, typeRec))
       }
     }
 
     object freeError {
-      def err(expr: Expr, typeRec: Type)(implicit file: String): WACCError = {
+      def err(expr: Expr, typeRec: SymbolType)(implicit file: String): WACCError = {
         WACCError(expr.pos, file, freeError(expr, typeRec))
       }
     }
@@ -131,14 +142,20 @@ object WACCErrors {
     }
 
     object derefErr {
-      def err(lval: Lvalue, t: Type)(implicit file: String): WACCError =  {
+      def err(lval: Lvalue, t: SymbolType)(implicit file: String): WACCError =  {
         WACCError(lval.pos, file, derefErr(lval, t))
       }
     }
 
-    object arrayType {
-      def err(rval:  Rvalue, t: Set[Type])(implicit file: String): WACCError = {
-        WACCError(rval.pos, file, arrayType(rval, t))
+    object derefErrE {
+      def err(e: Expr)(implicit file: String): WACCError = {
+        WACCError(e.pos, file, derefErrE(e))
+      }
+    }
+
+    object arrayTypeErr {
+      def err(rval:  Rvalue, t: SymbolType)(implicit file: String): WACCError = {
+        WACCError(rval.pos, file, arrayTypeErr(rval, t))
       }
     }
 
@@ -174,7 +191,7 @@ object WACCErrors {
 
       override def pos(line: Int, col: Int): Position = (line, col)
 
-      override def source(sourceName: Option[String]): Source = sourceName.map(name => s"file '$name'")
+      override def source(sourceName: Option[String]): Source = sourceName.map(name => s"name")
 
       override def vanillaError(unexpected: UnexpectedLine, expected: ExpectedLine, reasons: Messages, line: LineInfo): ErrorInfoLines = 
         SyntacticError(unexpected, expected, reasons, line)
