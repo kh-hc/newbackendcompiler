@@ -2,6 +2,7 @@ package wacc
 
 import parsley.errors.ErrorBuilder
 import parsley.errors.tokenextractors
+import abstractSyntaxTree._
 
 object WACCErrors {
     case class WACCError(pos: (Int, Int), file: String, lines: WACCErrorLines) {
@@ -28,6 +29,129 @@ object WACCErrors {
     }
     sealed trait SemanticError extends WACCErrorLines {
         override val errorType: String = "Semantic"
+    }
+
+
+    case class unexpectedType(unexpected: Type, expecteds: Set[Type]) extends SemanticError {
+        override val errorLines: Seq[String] = Seq(s"| Type error. \nExpected: ${expecteds.mkString("\n")}" +
+                                                s"\n| Actual: $unexpected")
+    }
+
+    case class varAlreadyAss(id: Identifier) extends SemanticError {
+        override val errorLines: Seq[String] = Seq(s"| Variable ${id.id} is already definde in this scope.")
+    }
+
+    case class ambiguousTypesReAss(pair: PairType, left: PairElemType, right: PairElemType) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Cannot reassign with ambiguous types on both sides,\n| left:" + 
+                                                s"$left, and right: $right")
+    }
+
+    case class readError(lval: Lvalue, typeRec: Type) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Cannot read values of type: $typeRec. Please supply an int or char.")
+    }
+
+    case class freeError(expr: Expr, typeRec: Type) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Tried to free expression of type: $typeRec, can only free values of type pair and array.")
+    }
+
+    case class returnError(expr: Expr) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Attempt to return from program body.")
+    }
+
+    case class undefinedVar(varId: Identifier) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Variable $varId not defined.")
+    }
+
+    case class valNotExists(id: Identifier) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Value $id does not exist.")
+    }
+
+    case class derefErr(lval: Lvalue, t: Type) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Tried to dereference something of type $t, but can only dereference things of type pair.")
+    }
+
+    case class arrayType(rval: Rvalue, t: Set[Type]) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Array has types ${t.mkString(",")}, but arrays can have only one type.")
+    }
+
+    case class undefFunc(id: Identifier) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Function $id is not defined.")
+    }
+
+    case class argumentMismatch(id: Identifier) extends SemanticError {
+      override val errorLines: Seq[String] = Seq(s"| Arguments provided do not match those expected.")
+    }
+
+    object unexpectedTypeStat {
+      def err(s: StatementUnit, unexpected: Type, expecteds: Set[Type])(implicit file: String): WACCError = {
+        WACCError(s.pos, file, unexpectedType(unexpected, expecteds))
+      }
+    }
+
+    object varAlreadyAss {
+      def err(id: Identifier)(implicit file: String): WACCError = {
+        WACCError(id.pos, file, varAlreadyAss(id))
+      }
+    }
+
+    object ambiguousTypesReAss {
+      def err(pair: PairType, left: PairElemType, right: PairElemType)(implicit file: String): WACCError = {
+        WACCError(pair.pos, file, ambiguousTypesReAss(pair, left, right))
+      }
+    }
+
+    object readError {
+      def err(lval: Lvalue, typeRec: Type)(implicit file: String): WACCError = {
+        WACCError(lval.pos, file, readError(lval, typeRec))
+      }
+    }
+
+    object freeError {
+      def err(expr: Expr, typeRec: Type)(implicit file: String): WACCError = {
+        WACCError(expr.pos, file, freeError(expr, typeRec))
+      }
+    }
+
+    object returnError {
+      def err(expr: Expr)(implicit file: String): WACCError = {
+        WACCError(expr.pos, file, returnError(expr))
+      }
+    }
+
+    object undefinedVar {
+      def err(varId: Identifier)(implicit file: String): WACCError = {
+        WACCError(varId.pos, file, undefinedVar(varId))
+      }
+    }
+
+    object valNotExists {
+      def err(id: Identifier)(implicit file: String): WACCError = {
+        WACCError(id.pos, file, valNotExists(id))
+      }
+    }
+
+    object derefErr {
+      def err(lval: Lvalue, t: Type)(implicit file: String): WACCError =  {
+        WACCError(lval.pos, file, derefErr(lval, t))
+      }
+    }
+
+    object arrayType {
+      def err(rval:  Rvalue, t: Set[Type])(implicit file: String): WACCError = {
+        WACCError(rval.pos, file, arrayType(rval, t))
+      }
+    }
+
+    object undefFunc {
+      def err(id: Identifier)(implicit file: String): WACCError = {
+        WACCError(id.pos, file, undefFunc(id))
+      }
+    }
+
+    object argumentMismatch {
+      def err(id: Identifier)(implicit file: String): WACCError = {
+        WACCError(id.pos, file, argumentMismatch(id))
+      }
     }
 
     class WACCErrorBuilder extends ErrorBuilder[WACCError] with tokenextractors.MatchParserDemand {
