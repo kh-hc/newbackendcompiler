@@ -6,16 +6,20 @@ class SemanticAnalyzer(file: String) {
     import SymbolTypes._    
     import WACCErrors._
 
+    // Stores the errors - this allows us to analyze the entire program and catch all the semantic errors
     var errorStack = new ListBuffer[WACCError]
 
+    // Checks whether any errors have been found
     def isErrors(): Boolean = {
         return errorStack.length > 0 
     }
 
+    // Gets a list of errors 
     def getErrors(): List[WACCError] = {
         return errorStack.toList
     }
 
+    // Main analysis function
     def analyzeProgram(ast: WACCprogram)  = {
         val symbolTable = new SymbolTable(None)
 
@@ -29,16 +33,18 @@ class SemanticAnalyzer(file: String) {
                 } 
             }
         })
+
         // Analyze the body of the functions
         ast.funcs.map(f => checkFunction(f, symbolTable))
-        // Checks the program body
-        // Using NullSymbol disallows returns implicitly
+
+        // Using NoReturn allows checking that the main body does not return anything
         checkStatement(ast.stat, symbolTable, NoReturn)
     }
 
     def checkFunction(function: FunctionUnit, symbolTable: SymbolTable) = {
-        // Create a symbol table for the new scope
+        // Create a symbol table for the argument scope
         val argsSymbols = new SymbolTable(Some(symbolTable))
+
         // Add each parameter into the new symbol table 
         function.params.paramlist.map(p => {
             try{
@@ -48,17 +54,20 @@ class SemanticAnalyzer(file: String) {
                     errorStack += varAlreadyAss.err(p.id)(file)
                 }
             }})
-        // Analyze each statement in the body of the function
+
+        // Analyze the function, with a new child symbol table as function arguments can be shadowed
         checkStatement(function.body, new SymbolTable(Some(argsSymbols)), translate(function.t))
     }
 
     def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = statement match{
         case SkipStat => ()
         case AssignStat(t, id, value) => {
+            // Check that we are not trying to assign to something that already exists
             if (symbolTable.lookup(id.id).isEmpty){
                 val expectedType = translate(t)
                 val providedType = checkRvalue(value, symbolTable)
                 if (expectedType != providedType) {
+                    // If the type of the right value provided is unexpected, this could be due to ambiguous typing rules with pairs and arrays:
                     providedType match {
                         case TopPairSymbol(a, b) => expectedType match {
                             case TopPairSymbol(x, y) => {
@@ -121,6 +130,7 @@ class SemanticAnalyzer(file: String) {
         case ReassignStat(left, right) => {
             val leftType = checkLvalue(left, symbolTable)
             val rightType = checkRvalue(right, symbolTable)
+            // If the types are not equal, we may be dealing with the ambiguous typing rules with pairs/arrays
             if (leftType != rightType){
                 leftType match {
                     case TopPairSymbol(ft, st) => rightType match {
@@ -142,25 +152,27 @@ class SemanticAnalyzer(file: String) {
                     case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file) 
                 }
             }
+            // Disallow having an ambiguous type on both sides of the reassign, as mentioned in the spec
             if ((leftType == NestedPairSymbol) && (rightType == NestedPairSymbol)){
                 errorStack += ambiguousTypesReAss.err(statement, left, right)(file) 
             }
             return ()
         }
         case ReadStat(value) => checkLvalue(value, symbolTable) match {
+            // We can only read ints or chars
             case IntSymbol => ()
             case CharSymbol => ()
             case default => errorStack += readError.err(value, default)(file) 
         }
-        case FreeStat(expr) =>  {
-            checkExpression(expr, symbolTable) match {
-                case ArraySymbol(_) => ()
-                case NestedPairSymbol => ()
-                case TopPairSymbol(_, _) => ()
-                case default => errorStack += freeError.err(expr, default)(file)
-            }
+        case FreeStat(expr) =>  checkExpression(expr, symbolTable) match {
+            // Makes sure that we are only freeing pairs or arrays
+            case ArraySymbol(_) => ()
+            case NestedPairSymbol => ()
+            case PairLiteralSymbol => ()
+            case TopPairSymbol(_, _) => ()
+            case default => errorStack += freeError.err(expr, default)(file)
         }
-        case ReturnStat(expr) =>  checkEvaluatesTo(expr, symbolTable, returnType)
+        case ReturnStat(expr) => checkEvaluatesTo(expr, symbolTable, returnType)
         case ExitStat(expr) => checkEvaluatesTo(expr, symbolTable, IntSymbol)
         case PrintStat(expr) => checkExpression(expr, symbolTable)
         case PrintlnStat(expr) => checkExpression(expr, symbolTable)
@@ -178,7 +190,9 @@ class SemanticAnalyzer(file: String) {
     }
 
     def checkEvaluatesTo(expr: Expr, symbolTable: SymbolTable, t: SymbolType): Unit = t match{
+        // We only try evaluting to NoReturn if we are trying to return from the body of the code
         case NoReturn => errorStack += returnError.err(expr)(file)
+        // Nested pairs can match with anything
         case NestedPairSymbol => return ()
         case TopPairSymbol(x, y) => {
             val exprType = checkExpression(expr, symbolTable)
@@ -192,6 +206,7 @@ class SemanticAnalyzer(file: String) {
         }
         case symbolType => {
             val exprType = checkExpression(expr, symbolTable)
+            // If the expected type does not match the actual type, check that the evalution does not lead to an ambiguous type
             if (exprType != symbolType){
                 if (exprType == NestedPairSymbol) {
                     return ()
@@ -221,6 +236,7 @@ class SemanticAnalyzer(file: String) {
         case CharExpr(_) => return CharSymbol
         case StrExpr(_) => return StringSymbol
         case Identifier(id) => st.lookupRecursive(id) match {
+            // If we can't find the identifer, log an error but then continue the analysis with an amibiguous symbol
             case None => {
                 errorStack += undefinedVar.err(expr.asInstanceOf[Identifier])(file) 
                 return AmbiguousSymbol
@@ -236,6 +252,7 @@ class SemanticAnalyzer(file: String) {
                 }
             }
             positions.map(p => checkEvaluatesTo(p, st, IntSymbol))
+            // Makes sure that the array types match fully, and logs an error if not
             try{
                 return derefType(arrayType, positions.length)
             } catch {
@@ -289,12 +306,14 @@ class SemanticAnalyzer(file: String) {
     }
 
     def checkEqualExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
+        // Checks that the types on either side of a binary expression are the same
         val exprType = checkExpression(exprL, st)
         checkEvaluatesTo(exprR, st, exprType)
         return exprType
     }
 
     def checkOrderExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
+        // Checks that the types on either side of a binary expression could be ints or chars
         val t = checkEqualExpr(exprL, exprR, st)
         if (!(t == IntSymbol || t == CharSymbol)) {
             errorStack += unexpectedTypeExpr.err(exprL, t, IntSymbol)(file) 
@@ -303,12 +322,14 @@ class SemanticAnalyzer(file: String) {
     }
 
     def checkMathExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
+        // Checks that both expressions could evaluate to ints
         checkEvaluatesTo(exprL, st, IntSymbol)
         checkEvaluatesTo(exprR, st, IntSymbol)
         return IntSymbol
     }
 
     def checkBoolExpr(exprL: Expr, exprR: Expr, st: SymbolTable): SymbolType = {
+        // Checks that both expressions could evalute to chars
         checkEvaluatesTo(exprL, st, BoolSymbol)
         checkEvaluatesTo(exprR, st, BoolSymbol)
         return BoolSymbol
@@ -333,12 +354,14 @@ class SemanticAnalyzer(file: String) {
                 return NestedPairSymbol
             }
         }
+        // All l-values types that are not pair elems are encompassed in the evalution of expressions, so we can use the same checker
         case expr => return checkExpression(expr.asInstanceOf[Expr], st)
     }
 
     def checkRvalue(value: Rvalue, st: SymbolTable): SymbolType = value match{
         case ArrayLiteral(contents) => {
             val arrayTypes: List[SymbolType] = contents.map(e => checkExpression(e, st))
+            // Ensures that every element in the array is of the same type, and returns that type
             if (arrayTypes.length > 0) {
                 if (arrayTypes.distinct.length == 1){
                     return ArraySymbol(arrayTypes.head)
@@ -353,6 +376,7 @@ class SemanticAnalyzer(file: String) {
         case NewPair(left, right) => {
             val symbolLeft = checkExpression(left, st)
             val symbolRight = checkExpression(right, st)
+            // Ensures that the pair type nesting heirachy is preserved when new pairs are created
             TopPairSymbol(symbolLeft match {
                 case TopPairSymbol(ft, st) => PairLiteralSymbol
                 case PairLiteralSymbol => NestedPairSymbol
@@ -366,6 +390,7 @@ class SemanticAnalyzer(file: String) {
             })
         }
         case Call(id, args) => st.lookupFunctionRecursive(id.id) match {
+            // Check that the function exists and the argument types match
             case Some(FunctionSymbol(returnT, argsT)) => {
                 matchArgs(argsT, args.args, st, id)
                 return returnT
@@ -375,12 +400,14 @@ class SemanticAnalyzer(file: String) {
                 return AmbiguousSymbol
             }
         }
+        // Reduce code duplication by letting l-value and expression evalute the rest of the r-values (they evaluate in the same way)
         case PairElemFst(pair) => checkLvalue(value.asInstanceOf[Lvalue], st)
         case PairElemSnd(pair) => checkLvalue(value.asInstanceOf[Lvalue], st)
         case expr => checkExpression(expr.asInstanceOf[Expr], st)
     }
 
     def matchArgs(expected: List[SymbolType], provided: List[Expr], st: SymbolTable, id: Identifier) = {
+        // Checks that the function is given the arguments that we expect
         if (expected.length != provided.length){
             errorStack += argumentMismatch.err(id)(file) 
         } else { 
