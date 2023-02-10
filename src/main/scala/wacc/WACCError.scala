@@ -9,8 +9,8 @@ object WACCErrors {
     case class WACCError(pos: (Int, Int), file: String, lines: WACCErrorLines) {
         override def toString: String = {
             (s"${lines.errorType} error " +
-             "in file: " + file + ", at position: " + pos + "\n" +
-             lines.errorLines.mkString("\n") + "\n\n"
+             "in file: " + file + ", at line: " + pos._1 + ", column: " + pos._2 + "\n" +
+             lines.errorLines.mkString("\n") + "\n" 
             )
         }
     }
@@ -21,11 +21,13 @@ object WACCErrors {
     }
     case class SyntacticError(unexpected: Option[String], expecteds: Set[String], reasons: Set[String], lines: Seq[String]) extends WACCErrorLines {
         override val errorType: String = "Syntactic"
-        override val errorLines: Seq[String] = lines
+        override val errorLines: Seq[String] = Seq (
+          "Unexpected value: " + unexpected.getOrElse("None") + "\n" +
+          "Expected value set: " + expecteds.mkString(",") + "\nError lines: \n" + lines.mkString("\n")
+        )
         override def toString: String = {
             "Unexpected value: " + unexpected.getOrElse("None") + "\n" +
-            "Expected value set:     " + expecteds.mkString("\n") + "\nReasons: \n" +
-            reasons.mkString("\n") + "\nError lines: \n" + lines.mkString("\n")
+            "Expected value set:     " + expecteds.mkString("\n") + "\nError lines: \n" + lines.mkString("\n")
         }
     }
     sealed trait SemanticError extends WACCErrorLines {
@@ -171,7 +173,10 @@ object WACCErrors {
       }
     }
 
-    class WACCErrorBuilder extends ErrorBuilder[WACCError] with tokenextractors.MatchParserDemand {
+    class WACCErrorBuilder extends ErrorBuilder[WACCError] with tokenextractors.TillNextWhitespace {
+
+      override def trimToParserDemand: Boolean = false
+
       type Position = (Int, Int)
       type ErrorInfoLines = WACCErrorLines
       type Source = Option[String]
@@ -213,11 +218,11 @@ object WACCErrors {
 
       override def lineInfo(line: String, linesBefore: Seq[String], linesAfter: Seq[String], errorPointsAt: Int, errorWidth: Int): LineInfo = {
         linesBefore.map(line => s"$errorLineStart$line") ++:
-        Seq(s"$errorLineStart$line", s"${" " * errorLineStart.length}${errorPointer(errorPointsAt, errorWidth)}") ++:
+        Seq(s"$errorLineStart$line", s"$errorLineStart${" " * (errorLineStart.length - 2)}${errorPointer(errorPointsAt, errorWidth)}") ++:
         linesAfter.map(line => s"$errorLineStart$line")
       }
 
-      private val errorLineStart = "|"
+      private val errorLineStart = "| "
       private def errorPointer(caretAt: Int, caretWidth: Int) = s"${" " * caretAt}${"^" * caretWidth}"
 
       override val numLinesBefore: Int = 1
