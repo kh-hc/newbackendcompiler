@@ -5,6 +5,7 @@ class SymbolTable(val parent: Option[SymbolTable]) {
     import SymbolTypes._
     import abstractSyntaxTree._
 
+    // Stores functions and variables separately, as variable names can shadow function names
     var table = new HashMap[String, SymbolType]();
     var functionTable = new HashMap[String, SymbolType]();
 
@@ -64,6 +65,7 @@ object SymbolTypes {
 
     sealed trait SymbolType
 
+    // Ambiguous symbol refers to any symbol of unknown type
     object AmbiguousSymbol extends SymbolType with PairSymbol
 
     case object IntSymbol extends SymbolType
@@ -72,12 +74,17 @@ object SymbolTypes {
     case object StringSymbol extends SymbolType
     case class ArraySymbol(t: SymbolType) extends SymbolType
     sealed trait PairSymbol extends SymbolType
+    // Top pair symbol refers to a pair where we know that it is a pair, and we know the types of its elements
     case class TopPairSymbol(ft: SymbolType, st: SymbolType) extends PairSymbol
+    // Pair literal symbol refers to a pair that we know for certain is a pair, but not the types of its elements
     case object PairLiteralSymbol extends PairSymbol
+    // Nested pair symbol refers to an element inside a pair that may or may be any type
     case object NestedPairSymbol extends PairSymbol
     case class FunctionSymbol(returnType: SymbolType, argTypes: List[SymbolType]) extends SymbolType
+    // NoReturn is a symbol that nothing can evalute to. It allows the analyzer to ensure that a sequence of statements doesn't return
     case object NoReturn extends SymbolType
 
+    // Translates the AST types into the symbol table types
     def translate(t: Any) : SymbolType = t match {
             case IntT => IntSymbol
             case BoolT => BoolSymbol
@@ -89,6 +96,7 @@ object SymbolTypes {
             case NestedPair => PairLiteralSymbol
         }
 
+    // Dereferences array types by the given amount
     def derefType(t: SymbolType, layers: Int): SymbolType = if (layers == 0) {
         return t
     } else {
