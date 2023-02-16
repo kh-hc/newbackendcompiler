@@ -39,6 +39,7 @@ class SemanticAnalyzer(file: String) {
 
         // Using NoReturn allows checking that the main body does not return anything
         checkStatement(ast.stat, symbolTable, NoReturn)
+        ast.symbolTable = Some(symbolTable)
     }
 
     def checkFunction(function: FunctionUnit, symbolTable: SymbolTable) = {
@@ -57,6 +58,7 @@ class SemanticAnalyzer(file: String) {
 
         // Analyze the function, with a new child symbol table as function arguments can be shadowed
         checkStatement(function.body, new SymbolTable(Some(argsSymbols)), translate(function.t))
+        function.symbolTable = Some(symbolTable)
     }
 
     def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = statement match{
@@ -121,6 +123,7 @@ class SemanticAnalyzer(file: String) {
                         errorStack += varAlreadyAss.err(id)(file)
                     }
                 }
+                statement.symbolTable = Some(symbolTable)
                 return ()
             } else {
                 errorStack += varAlreadyAss.err(id)(file)
@@ -156,6 +159,7 @@ class SemanticAnalyzer(file: String) {
             if ((leftType == NestedPairSymbol) && (rightType == NestedPairSymbol)){
                 errorStack += ambiguousTypesReAss.err(statement, left, right)(file) 
             }
+            statement.symbolTable = Some(symbolTable)
             return ()
         }
         case ReadStat(value) => checkLvalue(value, symbolTable) match {
@@ -187,6 +191,7 @@ class SemanticAnalyzer(file: String) {
         }
         case ScopeStat(stat) => checkStatement(stat, new SymbolTable(Some(symbolTable)), returnType)
         case SeqStat(stats) => stats.map(s => checkStatement(s, symbolTable, returnType))
+        statement.symbolTable = Some(symbolTable)
     }
 
     def checkEvaluatesTo(expr: Expr, symbolTable: SymbolTable, t: SymbolType): Unit = t match{

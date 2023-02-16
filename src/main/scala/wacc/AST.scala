@@ -6,15 +6,19 @@ object abstractSyntaxTree {
     import parsley.position._
     import parsley.implicits.zipped._
 
-    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int)) 
+    sealed trait ASTNode {
+        var symbolTable: Option[SymbolTable] = None
+    }
+
+    case class WACCprogram(funcs: List[FunctionUnit], stat: StatementUnit)(val pos: (Int, Int))  extends ASTNode
     
-    case class FunctionUnit(t: Type, id: Identifier, params: ParamList, body: StatementUnit)(val pos: (Int, Int))
+    case class FunctionUnit(t: Type, id: Identifier, params: ParamList, body: StatementUnit)(val pos: (Int, Int)) extends ASTNode
 
-    case class ParamList(paramlist: List[Param])(val pos: (Int, Int)) 
+    case class ParamList(paramlist: List[Param])(val pos: (Int, Int)) extends ASTNode
 
-    case class Param(t: Type, id: Identifier)(val pos: (Int, Int)) 
+    case class Param(t: Type, id: Identifier)(val pos: (Int, Int)) extends ASTNode
 
-    sealed trait StatementUnit {
+    sealed trait StatementUnit extends ASTNode {
         val pos: (Int, Int)
     } 
     case object SkipStat extends StatementUnit with ParserBridgePos0[StatementUnit] {
@@ -34,7 +38,7 @@ object abstractSyntaxTree {
     case class ScopeStat(body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class SeqStat(statements: List[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
 
-    sealed trait Lvalue {
+    sealed trait Lvalue extends ASTNode {
         val pos: (Int, Int)
     }
 
@@ -43,7 +47,7 @@ object abstractSyntaxTree {
     case class PairElemFst(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
     case class PairElemSnd(pair: Lvalue)(val pos: (Int, Int)) extends PairElem
 
-    sealed trait Rvalue {
+    sealed trait Rvalue extends ASTNode{
         val pos: (Int, Int)
     }
     sealed trait Expr extends Rvalue
@@ -53,7 +57,7 @@ object abstractSyntaxTree {
 
     case class ArgList(args: List[Expr])(val pos: (Int, Int))
 
-    sealed trait Type
+    sealed trait Type extends ASTNode
     
     sealed trait BaseType extends Type
     case object IntT extends BaseType with ParserBridgePos0[Type]
@@ -64,7 +68,7 @@ object abstractSyntaxTree {
     case class ArrayType(t: Type)(val pos: (Int, Int)) extends Type
 
     case class PairType(left: PairElemType, right: PairElemType)(val pos: (Int, Int)) extends Type
-    sealed trait PairElemType
+    sealed trait PairElemType extends ASTNode
     case class PairElemTypeT(t: Type)(val pos: (Int, Int)) extends PairElemType
     case object NestedPair extends PairElemType with ParserBridgePos0[PairElemType]
 

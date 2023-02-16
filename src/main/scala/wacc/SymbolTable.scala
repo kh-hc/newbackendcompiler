@@ -1,13 +1,25 @@
 package wacc
-import scala.collection.immutable.HashMap
 
 class SymbolTable(val parent: Option[SymbolTable]) {
     import SymbolTypes._
     import abstractSyntaxTree._
 
+    var unique_id = ""
+    var counter = 0
+
+    parent match {
+        case Some(st) => {
+            st.counter = st.counter + 1
+            unique_id = st.unique_id + st.counter.toString
+        } 
+        case None => {
+            unique_id = "0"
+        }
+    }
+
     // Stores functions and variables separately, as variable names can shadow function names
-    var table = new HashMap[String, SymbolType]();
-    var functionTable = new HashMap[String, SymbolType]();
+    var table = Map.empty[String, SymbolType];
+    var functionTable = Map.empty[String, SymbolType];
 
     def add(func: FunctionUnit) : Unit = (
         if (lookupFunction(func.id.id).isEmpty){
@@ -46,6 +58,11 @@ class SymbolTable(val parent: Option[SymbolTable]) {
             }
         }
         symbolType
+    }
+
+    def lookupRecursiveWithId(name: String) : (String, SymbolType) = lookup(name) match {
+        case None => parent.get.lookupRecursiveWithId(name)
+        case Some(st) => (name + unique_id, st)
     }
 
     def lookupFunctionRecursive(name: String) : Option[SymbolType] = {
