@@ -9,13 +9,14 @@ This will be used to help translate the AST into Assembly language.
 
 object assemblyAbstractStructure {
     case class Program(main: Function, functions: List[Function])
-    case class Function(body: List[Instruction])
+    case class Function(body: List[Instruction], args: List[Stored])
 
     sealed trait Instruction
     
     case class BinaryOperation(operator: AssemblyOperator, src1: Value, src2: Value, dest: Value) extends Instruction
-    case class UnaryOperation(operator: AssemblyOperator, src: Value, dest: Value)
-    case class FunctionCall(functionName: String, args: List[Value])
+    case class UnaryOperation(operator: AssemblyOperator, src: Value, dest: Value) extends Instruction
+    case class InbuiltFunction(operator: AssemblyOperator, src: Value) extends Instruction
+    case class FunctionCall(functionName: String, args: List[Value]) extends Instruction
 
     case class IfInstruction(condition: Conditional, ifInstructions: List[Instruction], elseInstructions: List[Instruction])
     case class WhileInstruction(condition: Conditional, body: List[Instruction])
@@ -43,4 +44,6 @@ object assemblyAbstractStructure {
     case object Assign extends AssemblyOperator
     case object Read extends AssemblyOperator
     case object Free extends AssemblyOperator
+    case object Return extends AssemblyOperator
+    case object Exit extends AssemblyOperator
 }
