@@ -27,7 +27,7 @@ object assemblyCode {
 
     case class Immediate(x: Integer) extends Operand
     case class Label(label: String) extends Operand
-    case class Offset(reg: Reg, offset: Immediate) extends Operand
+    case class Offset(reg: Register, offset: Immediate) extends Operand
 
     sealed trait Opcode
     case object Add extends Opcode
@@ -52,9 +52,9 @@ object assemblyCode {
     sealed trait AssInstr
     case class QuaternaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand, op4: Operand) extends AssInstr
     case class TernaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
-    case class BinaryAssInstr(op: OpCode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
-    case class UnaryAssInstr(op: OpCode, cond: Condition, op1: Operand) extends AssInstr
-    case class MultiAssInstr(op: OpCode, operands: List[Operand]) extends AssInstr
+    case class BinaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
+    case class UnaryAssInstr(op: Opcode, cond: Condition, op1: Operand) extends AssInstr
+    case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
 
     case class AssProg(blocks: List[Block])
     case class Block(label: Label, AssInstrs: List[AssInstr])
