@@ -21,7 +21,7 @@ object assemblyCode {
     case object IPC extends ReservedRegister // intra procedural call
     case object SP extends ReservedRegister // stack pointer
     case object LR extends ReservedRegister // link register
-    case object PC extends ReservedRegister // program counter
+    case object PC extends ReservedRegister // AssProg counter
 
     val generalRegisters = Set(R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10)
 
@@ -49,12 +49,13 @@ object assemblyCode {
     case object GT extends Condition
     case object LE extends Condition
     
-    sealed trait Block(label: Label, instructions: List[Instruction])
+    sealed trait AssInstr
+    case class QuaternaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand, op4: Operand) extends AssInstr
+    case class TernaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
+    case class BinaryAssInstr(op: OpCode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
+    case class UnaryAssInstr(op: OpCode, cond: Condition, op1: Operand) extends AssInstr
+    case class MultiAssInstr(op: OpCode, operands: List[Operand]) extends AssInstr
 
-    sealed trait Instruction
-    case class QuaternaryInstruction(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand, op4: Operand) extends Instruction
-    case class TernaryInstruction(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends Instruction
-    case class BinaryInstruction(op: OpCode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends Instruction
-    case class UnaryInstruction(op: OpCode, cond: Condition, op1: Operand) extends Instruction
-    case class MultiInstruction(op: OpCode, operands: List[Operand]) extends Instruction
+    case class AssProg(blocks: List[Block])
+    case class Block(label: Label, AssInstrs: List[AssInstr])
 }
