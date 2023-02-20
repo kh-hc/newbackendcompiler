@@ -22,7 +22,8 @@ class AbstractTranslator {
 
     def translateMain(stat: StatementUnit): List[Instruction] = translateStat(stat)
 
-    def translateStat(stat: StatementUnit): List[Instruction] = stat match {
+    def translateStat(stat: StatementUnit): List[Instruction] = {
+        stat match {
         case SkipStat => List.empty
         case AssignStat(t, id, value) => {
             val (rightIntermediate, instrR) = translateRvalue(value, stat.symbolTable.get)
@@ -70,6 +71,7 @@ class AbstractTranslator {
         case ScopeStat(body) => translateStat(body)
         case SeqStat(statements) => statements.map(translateStat).flatten
     }
+}
 
     def translateRvalue(value: Rvalue, st: SymbolTable): (Value, List[Instruction]) = value match {
         case ArrayLiteral(value) => {

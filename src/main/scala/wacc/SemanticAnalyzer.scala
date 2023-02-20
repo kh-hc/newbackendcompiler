@@ -57,154 +57,149 @@ class SemanticAnalyzer(file: String) {
             }})
 
         // Analyze the function, with a new child symbol table as function arguments can be shadowed
-        checkStatement(function.body, new SymbolTable(Some(argsSymbols)), translate(function.t))
-        function.symbolTable = Some(symbolTable)
+        val functionSymbolTable = new SymbolTable(Some(argsSymbols))
+        checkStatement(function.body, functionSymbolTable, translate(function.t))
+        function.symbolTable = Some(functionSymbolTable)
     }
 
-    def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = statement match {
-        case SkipStat => ()
-        case AssignStat(t, id, value) => {
-            // Check that we are not trying to assign to something that already exists
-            if (symbolTable.lookup(id.id).isEmpty) {
-                val expectedType = translate(t)
-                val providedType = checkRvalue(value, symbolTable)
-                if (expectedType != providedType) {
-                    // If the type of the right value provided is unexpected, this could be due to ambiguous typing rules with pairs and arrays:
-                    providedType match {
-                        case TopPairSymbol(a, b) => expectedType match {
-                            case TopPairSymbol(x, y) => {
-                                if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
-                                && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))) {
-                                    errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+    def checkStatement(statement: StatementUnit, symbolTable: SymbolTable, returnType: SymbolType): Unit = {
+        statement.symbolTable = Some(symbolTable)
+        statement match {
+            case SkipStat => ()
+            case AssignStat(t, id, value) => {
+                // Check that we are not trying to assign to something that already exists
+                if (symbolTable.lookup(id.id).isEmpty) {
+                    val expectedType = translate(t)
+                    val providedType = checkRvalue(value, symbolTable)
+                    if (expectedType != providedType) {
+                        // If the type of the right value provided is unexpected, this could be due to ambiguous typing rules with pairs and arrays:
+                        providedType match {
+                            case TopPairSymbol(a, b) => expectedType match {
+                                case TopPairSymbol(x, y) => {
+                                    if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
+                                    && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))) {
+                                        errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                                    }
                                 }
+                                case NestedPairSymbol => 
+                                case PairLiteralSymbol =>
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                            }
+                            case PairLiteralSymbol => expectedType match {
+                                case TopPairSymbol(ft, st) => 
+                                case NestedPairSymbol => 
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                            }
+                            case ArraySymbol(AmbiguousSymbol) => expectedType match {
+                                case ArraySymbol(x) =>
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                            }
+                            case ArraySymbol(TopPairSymbol(x, y)) => expectedType match {
+                                case ArraySymbol(TopPairSymbol(a, b)) => {
+                                    if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
+                                    && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))) {
+                                        errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                                    }
+                                }
+                                case ArraySymbol(NestedPairSymbol) => 
+                                case ArraySymbol(PairLiteralSymbol) =>
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                            }
+                            case ArraySymbol(PairLiteralSymbol) => expectedType match {
+                                case ArraySymbol(TopPairSymbol(ft, st)) => 
+                                case ArraySymbol(NestedPairSymbol) => 
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
+                            }
+                            case ArraySymbol(NestedPairSymbol) => expectedType match {
+                                case ArraySymbol(x) =>
+                                case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
                             }
                             case NestedPairSymbol => 
-                            case PairLiteralSymbol =>
+                            case AmbiguousSymbol => 
                             case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
                         }
-                        case PairLiteralSymbol => expectedType match {
-                            case TopPairSymbol(ft, st) => 
-                            case NestedPairSymbol => 
-                            case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                        }
-                        case ArraySymbol(AmbiguousSymbol) => expectedType match {
-                            case ArraySymbol(x) =>
-                            case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                        }
-                        case ArraySymbol(TopPairSymbol(x, y)) => expectedType match {
-                            case ArraySymbol(TopPairSymbol(a, b)) => {
-                                if (!((x == NestedPairSymbol || a == NestedPairSymbol || x == a)
-                                && (y == NestedPairSymbol || b == NestedPairSymbol || b == y))) {
-                                    errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                                }
-                            }
-                            case ArraySymbol(NestedPairSymbol) => 
-                            case ArraySymbol(PairLiteralSymbol) =>
-                            case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                        }
-                        case ArraySymbol(PairLiteralSymbol) => expectedType match {
-                            case ArraySymbol(TopPairSymbol(ft, st)) => 
-                            case ArraySymbol(NestedPairSymbol) => 
-                            case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                        }
-                        case ArraySymbol(NestedPairSymbol) => expectedType match {
-                            case ArraySymbol(x) =>
-                            case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
-                        }
-                        case NestedPairSymbol => 
-                        case AmbiguousSymbol => 
-                        case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
                     }
-                }
-                try {
-                    symbolTable.add(id.id, expectedType)
-                } catch {
-                    case e: Exception => {
-                        errorStack += varAlreadyAss.err(id)(file)
+                    try {
+                        symbolTable.add(id.id, expectedType)
+                    } catch {
+                        case e: Exception => {
+                            errorStack += varAlreadyAss.err(id)(file)
+                        }
                     }
+                    return ()
+                } else {
+                    errorStack += varAlreadyAss.err(id)(file)
+                    return ()
                 }
-                statement.symbolTable = Some(symbolTable)
-                return ()
-            } else {
-                errorStack += varAlreadyAss.err(id)(file)
-                return ()
             }
-        }
-        case ReassignStat(left, right) => {
-            val leftType = checkLvalue(left, symbolTable)
-            val rightType = checkRvalue(right, symbolTable)
-            // If the types are not equal, we may be dealing with the ambiguous typing rules with pairs/arrays
-            if (leftType != rightType) {
-                leftType match {
-                    case TopPairSymbol(ft, st) => rightType match {
-                        case NestedPairSymbol => 
-                        case PairLiteralSymbol => 
-                        case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file)
-                    }
-                    case ArraySymbol(AmbiguousSymbol) => rightType match {
-                        case ArraySymbol(x) =>
-                        case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file)
-                    }
-                    case AmbiguousSymbol =>
-                    case PairLiteralSymbol =>  rightType match {
-                        case TopPairSymbol(ft, st) => 
+            case ReassignStat(left, right) => {
+                val leftType = checkLvalue(left, symbolTable)
+                val rightType = checkRvalue(right, symbolTable)
+                // If the types are not equal, we may be dealing with the ambiguous typing rules with pairs/arrays
+                if (leftType != rightType) {
+                    leftType match {
+                        case TopPairSymbol(ft, st) => rightType match {
+                            case NestedPairSymbol => 
+                            case PairLiteralSymbol => 
+                            case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file)
+                        }
+                        case ArraySymbol(AmbiguousSymbol) => rightType match {
+                            case ArraySymbol(x) =>
+                            case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file)
+                        }
+                        case AmbiguousSymbol =>
+                        case PairLiteralSymbol =>  rightType match {
+                            case TopPairSymbol(ft, st) => 
+                            case NestedPairSymbol =>
+                            case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file) 
+                        }
                         case NestedPairSymbol =>
                         case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file) 
                     }
-                    case NestedPairSymbol =>
-                    case default => errorStack += unexpectedTypeStat.err(statement, rightType, leftType)(file) 
                 }
+                // Disallow having an ambiguous type on both sides of the reassign, as mentioned in the spec
+                if ((leftType == NestedPairSymbol) && (rightType == NestedPairSymbol)) {
+                    errorStack += ambiguousTypesReAss.err(statement, left, right)(file) 
+                }
+                return ()
             }
-            // Disallow having an ambiguous type on both sides of the reassign, as mentioned in the spec
-            if ((leftType == NestedPairSymbol) && (rightType == NestedPairSymbol)) {
-                errorStack += ambiguousTypesReAss.err(statement, left, right)(file) 
+            case ReadStat(value) => checkLvalue(value, symbolTable) match {
+                // We can only read ints or chars
+                case IntSymbol => ()
+                case CharSymbol => ()
+                case default => errorStack += readError.err(value, default)(file) 
             }
-            return ()
-        }
-        case ReadStat(value) => checkLvalue(value, symbolTable) match {
-            // We can only read ints or chars
-            case IntSymbol => ()
-            case CharSymbol => ()
-            case default => errorStack += readError.err(value, default)(file) 
-        }
-        case FreeStat(expr) => checkExpression(expr, symbolTable) match {
-            // Makes sure that we are only freeing pairs or arrays
-            case ArraySymbol(_) => ()
-            case NestedPairSymbol => ()
-            case PairLiteralSymbol => ()
-            case TopPairSymbol(_, _) => ()
-            case default => errorStack += freeError.err(expr, default)(file)
-        }
-        case ReturnStat(expr) => checkEvaluatesTo(expr, symbolTable, returnType)
-        case ExitStat(expr) => checkEvaluatesTo(expr, symbolTable, IntSymbol)
-        case PrintStat(expr) => checkExpression(expr, symbolTable)
-        case PrintlnStat(expr) => checkExpression(expr, symbolTable)
-        case IfStat(cond, ifStat, elseStat) => {
-            checkEvaluatesTo(cond, symbolTable, BoolSymbol)
-            val ifSymbols = new SymbolTable(Some(symbolTable))
-            ifStat.symbolTable = Some(ifSymbols)
-            checkStatement(ifStat, ifSymbols, returnType)
-            val elseSymbols = new SymbolTable(Some(symbolTable))
-            elseStat.symbolTable = Some(elseSymbols)
-            checkStatement(elseStat, elseSymbols, returnType)
-        }
-        case WhileStat(cond, body) => {
-            checkEvaluatesTo(cond, symbolTable, BoolSymbol)
-            val bodySymbols = new SymbolTable(Some(symbolTable))
-            checkStatement(body, bodySymbols, returnType)
-            body.symbolTable = Some(bodySymbols)
-        }
-        case ScopeStat(stat) => {
-            val scopeSymbols = new SymbolTable(Some(symbolTable))
-            checkStatement(stat, scopeSymbols, returnType)
-            stat.symbolTable = Some(scopeSymbols)
-        }
-        case SeqStat(stats) => {
-            stats.map(s => {
-            checkStatement(s, symbolTable, returnType)
-            s.symbolTable = Some(symbolTable)
-            })
-        statement.symbolTable = Some(symbolTable)
+            case FreeStat(expr) => checkExpression(expr, symbolTable) match {
+                // Makes sure that we are only freeing pairs or arrays
+                case ArraySymbol(_) => ()
+                case NestedPairSymbol => ()
+                case PairLiteralSymbol => ()
+                case TopPairSymbol(_, _) => ()
+                case default => errorStack += freeError.err(expr, default)(file)
+            }
+            case ReturnStat(expr) => checkEvaluatesTo(expr, symbolTable, returnType)
+            case ExitStat(expr) => checkEvaluatesTo(expr, symbolTable, IntSymbol)
+            case PrintStat(expr) => checkExpression(expr, symbolTable)
+            case PrintlnStat(expr) => checkExpression(expr, symbolTable)
+            case IfStat(cond, ifStat, elseStat) => {
+                checkEvaluatesTo(cond, symbolTable, BoolSymbol)
+                val ifSymbols = new SymbolTable(Some(symbolTable))
+                checkStatement(ifStat, ifSymbols, returnType)
+                val elseSymbols = new SymbolTable(Some(symbolTable))
+                checkStatement(elseStat, elseSymbols, returnType)
+            }
+            case WhileStat(cond, body) => {
+                checkEvaluatesTo(cond, symbolTable, BoolSymbol)
+                val bodySymbols = new SymbolTable(Some(symbolTable))
+                checkStatement(body, bodySymbols, returnType)
+            }
+            case ScopeStat(stat) => {
+                val scopeSymbols = new SymbolTable(Some(symbolTable))
+                checkStatement(stat, scopeSymbols, returnType)
+            }
+            case SeqStat(stats) => {
+                stats.map(s => checkStatement(s, symbolTable, returnType))
+            }
         }
     }
 

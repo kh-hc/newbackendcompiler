@@ -20,6 +20,8 @@ object Main {
                         sa.getErrors().map(e =>  println(e))
                         sys.exit(200)
                     } else {
+                        val as = new AbstractTranslator()
+                        println(as.translate(x))
                         sys.exit(0)
                     }
                 }
@@ -29,7 +31,7 @@ object Main {
                 }
             }
         } catch {
-            case e: Exception => println("Fatal error: file could not be read.")
+            case e: Exception => println("Fatal exception: File could not be read")
         }
     }
 }
