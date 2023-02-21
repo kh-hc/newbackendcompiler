@@ -165,6 +165,5 @@ class AbstractTranslator {
             case PairLiteral => List(UnaryOperation(A_Assign, Null, dest))
             case ParenExpr(expr) => translateExp(expr, dest, st)
         }
-        return List.empty
     }
 }
