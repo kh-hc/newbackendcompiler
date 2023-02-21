@@ -48,11 +48,13 @@ object assemblyCode {
     case object LT extends Condition
     case object GT extends Condition
     case object LE extends Condition
+    case object N extends Condition
     
     sealed trait AssInstr
+    // General convention being dest src src1 ...
     case class QuaternaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand, op4: Operand) extends AssInstr
     case class TernaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
-    case class BinaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand, op3: Operand) extends AssInstr
+    case class BinaryAssInstr(op: Opcode, cond: Condition, op1: Operand, op2: Operand) extends AssInstr
     case class UnaryAssInstr(op: Opcode, cond: Condition, op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
 
