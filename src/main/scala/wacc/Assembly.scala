@@ -25,9 +25,9 @@ object assemblyCode {
 
     val generalRegisters = Set(R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10)
 
-    case class Immediate(x: Integer) extends Operand
+    case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
-    case class Offset(reg: Register, offset: Immediate) extends Operand
+    case class Offset(reg: Register, offset: Imm) extends Operand
 
     sealed trait Opcode
     case object Add extends Opcode

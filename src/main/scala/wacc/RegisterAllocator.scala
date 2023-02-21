@@ -3,8 +3,8 @@ package wacc
 class RegisterAllocator() {
     import Assembly._
     var stackSize: Int = 0
-    var storage = Map.empty[String, Storage]
-    var registerMap = Map.empty[Register, String]
+    var storage = mutable.Map.empty[String, Storage]
+    var registerMap = mutable.Map.empty[Register, String]
 
     val availableRegisters = Stack[Register]()
     availableRegisters.pushAll(generalRegisters)
@@ -35,16 +35,16 @@ class RegisterAllocator() {
             val registerToFree = usedRegisters.pop
             val variableToStore = registerMap[registerToFree]
             stackSize = stackSize + 1
-            freeingInstructions += BinaryAssInstr(Str, N, Offset(FP, Immediate(4 * stackSize)), registerToFree)
-            storage[name] = Stored(stackSize)
+            freeingInstructions += BinaryAssInstr(Str, N, Offset(FP, Imm(4 * stackSize)), registerToFree)
+            storage(name) = Stored(stackSize)
         }
         return (freeingInstructions.toList, availableRegisters.pop)
     }
 
     private def store(name: String, register: Register) = {
         // Assuming the old value in the register has been stored already
-        registerMap[register] = name
-        storage[name] = Reg(register)
+        registerMap(register) = name
+        storage(name) = Reg(register)
     }
 }
 
