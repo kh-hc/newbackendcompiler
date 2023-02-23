@@ -27,7 +27,7 @@ object assemblyCode {
 
     case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
-    case class Offset(reg: Register, offset: Imm) extends Operand
+    case class Offset(reg: Operand, offset: Imm) extends Operand
 
     sealed trait Opcode
     case object Add extends Opcode
@@ -40,15 +40,16 @@ object assemblyCode {
     case object Sub extends Opcode
     case object Cmp extends Opcode
     case object Mul extends Opcode
+    case object And extends Opcode
+    case object Or extends Opcode
     
     sealed trait Condition
-    case object EQ extends Condition
-    case object NE extends Condition
-    case object GE extends Condition
-    case object LT extends Condition
-    case object GT extends Condition
-    case object LE extends Condition
-    case object N extends Condition
+    case object EQ extends Condition with Opcode
+    case object NE extends Condition with Opcode
+    case object GE extends Condition with Opcode
+    case object LT extends Condition with Opcode
+    case object GT extends Condition with Opcode
+    case object LE extends Condition with Opcode
     
     sealed trait AssInstr
     // General convention being dest src src1 ...
@@ -57,6 +58,7 @@ object assemblyCode {
     case class BinaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand, op2: Operand) extends AssInstr
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
+    case class BranchLinked(function: String) extends AssInstr
 
     case class AssProg(blocks: List[Block])
     case class Block(label: Label, AssInstrs: List[AssInstr])
