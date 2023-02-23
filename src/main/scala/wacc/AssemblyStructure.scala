@@ -36,7 +36,7 @@ object assemblyAbstractStructure {
 
     sealed trait AssemblyUOperator
     sealed trait AssemblyBOperator
-     sealed trait AssemblyIOperator
+    sealed trait AssemblyIOperator
      
     case object A_Add extends AssemblyBOperator
     case object A_Sub extends AssemblyBOperator
@@ -56,6 +56,7 @@ object assemblyAbstractStructure {
     case object A_Len extends AssemblyUOperator with AssemblyIOperator
     case object A_Chr extends AssemblyUOperator
     case object A_Ord extends AssemblyUOperator
+    case object A_Mov extends AssemblyUOperator
     case object A_Print extends AssemblyIOperator
     case object A_Println extends AssemblyIOperator
     case object A_Assign extends AssemblyUOperator with AssemblyIOperator
@@ -63,6 +64,6 @@ object assemblyAbstractStructure {
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
     case object A_Exit extends AssemblyIOperator
-    case object A_ArrayCreate extends AssemblyIOperator// src: Length, dst: Addr
+    case object A_ArrayCreate extends AssemblyIOperator with AssemblyUOperator// src: Length, dst: Addr
     case object A_PairCreate extends AssemblyIOperator // src: Addr
 }
