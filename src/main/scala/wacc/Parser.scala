@@ -3,11 +3,11 @@ package wacc
 import parsley.Parsley
 import parsley.errors.ErrorBuilder
 
+import wacc.lexer
 object parser {
     import parsley.combinator._
     import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
-    import parsley.character.whitespace
     import java.io.File
 
     import lexer._
