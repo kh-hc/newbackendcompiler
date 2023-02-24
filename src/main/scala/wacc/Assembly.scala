@@ -6,7 +6,7 @@ object assemblyCode {
     sealed trait Register extends Operand
     sealed trait GeneralRegister extends Register
     sealed trait ReservedRegister extends Register
-    case object R0 extends GeneralRegister
+    case object Return extends ReservedRegister
     case object R1 extends GeneralRegister
     case object R2 extends GeneralRegister
     case object R3 extends GeneralRegister
@@ -23,7 +23,7 @@ object assemblyCode {
     case object LR extends ReservedRegister // link register
     case object PC extends ReservedRegister // AssProg counter
 
-    val generalRegisters = Set(R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10)
+    val generalRegisters = Set(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10)
 
     case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
@@ -49,6 +49,17 @@ object assemblyCode {
     case object LT extends Condition with Opcode
     case object GT extends Condition with Opcode
     case object LE extends Condition with Opcode
+
+    sealed trait InBuilt
+    case object PrintI extends InBuilt
+    case object PrintB extends InBuilt
+    case object PrintC extends InBuilt
+    case object PrintS extends InBuilt
+    case object PrintA extends InBuilt
+    case object PrintLn extends InBuilt
+    case object DivMod extends InBuilt
+    case object Exit extends InBuilt
+    case object Free extends InBuilt
     
     sealed trait AssInstr
     // General convention being dest src src1 ...
@@ -57,7 +68,8 @@ object assemblyCode {
     case class BinaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand, op2: Operand) extends AssInstr
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
-    case class BranchLinked(function: String) extends AssInstr
+    case class BranchLinked(function: InBuilt) extends AssInstr
+    case class CallFunction(function: String) extends AssInstr
 
     case class AssProg(blocks: List[Block])
     case class Block(label: Label, instrs: List[AssInstr])

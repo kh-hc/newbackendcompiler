@@ -3,25 +3,20 @@ package wacc
 class AssemblyTranslator {
     import assemblyCode._
     import assemblyAbstractStructure._
-    import scala.collection.mutable.ListBuffer
+    import scala.collection.mutable.Set
 
-    val usedFunctions = new ListBuffer[AssemblyIOperator]()
+    val usedFunctions = Set.empty[InBuilt]
 
-    def buildAssembly() = {
-        // Builds the assembly program, making sure that all boilerplate
-        // included functions and tags are correctly formatted
-    }
-
-    def translate(program: Program): AssProg = {
+    def translate(program: Program): (AssProg, Set[InBuilt]) = {
         val main = translateMain(program.main)
-        return AssProg(List(main))
+        return (AssProg(List(main)), usedFunctions)
     }
 
     def translateMain(instructions: List[Instruction]): Block = {
         val allocator = new RegisterAllocator()
         val assembly = instructions.map(i => translateInstruction(i, allocator)).flatten
         val (prefix, suffix) = allocator.generateBoilerPlate()
-        return Block(Label("main"), prefix ++ (assembly :+ BinaryAssInstr(Mov, None, R0, Imm(0))) ++ suffix)
+        return Block(Label("main"), prefix ++ (assembly :+ BinaryAssInstr(Mov, None, Return, Imm(0))) ++ suffix)
     }
 
     def translateFunction(function: Function): Block = {
@@ -63,21 +58,21 @@ class AssemblyTranslator {
                 case A_Sub => List(TernaryAssInstr(Sub, None, destAssembly, src1Assembly, src2Assembly))
                 case A_Mul => List(TernaryAssInstr(Mul, None, destAssembly, src1Assembly, src2Assembly))
                 case A_Div => {
-                    val saveRegs = allocator.saveArgs(List(R0, R1))
+                    val saveRegs = allocator.saveArgs(List(R1))
                     // TODO: Add a saveargs function to the register allocator to
-                    // save R0 and R1 before we do this...
-                    saveRegs ++ List(BinaryAssInstr(Mov, None, R0, src1Assembly),
+                    // save Return and R1 before we do this...
+                    saveRegs ++ List(BinaryAssInstr(Mov, None, Return, src1Assembly),
                     BinaryAssInstr(Mov, None, R1, src2Assembly),
-                    BranchLinked("__aeabi_idivmod"),
-                    BinaryAssInstr(Mov, None, destAssembly, R0))
+                    BranchLinked(DivMod),
+                    BinaryAssInstr(Mov, None, destAssembly, Return))
                     // branch with link to __aeabi_idivmod
                 }
                 case A_Mod => {
-                    val saveRegs = allocator.saveArgs(List(R0, R1))
-                    // save R0 and R1 before we do this...
-                    saveRegs ++ List(BinaryAssInstr(Mov, None, R0, src1Assembly),
+                    val saveRegs = allocator.saveArgs(List(R1))
+                    // save Return and R1 before we do this...
+                    saveRegs ++ List(BinaryAssInstr(Mov, None, Return, src1Assembly),
                     BinaryAssInstr(Mov, None, R1, src2Assembly),
-                    BranchLinked("__aeabi_idivmod"),
+                    BranchLinked(DivMod),
                     BinaryAssInstr(Mov, None, destAssembly, R1))
                     // branch with link to __aeabi_idivmod
                 }
@@ -102,18 +97,57 @@ class AssemblyTranslator {
                 case A_Chr => List(BinaryAssInstr(Mov, None, destAssembly, srcAssembly))
                 case A_Ord => List(BinaryAssInstr(Mov, None, destAssembly, srcAssembly))
                 case A_ArrayCreate => Nil
-                case A_Assign => Nil
+                case A_Assign => List(BinaryAssInstr(Mov, None, destAssembly, srcAssembly))
                 case A_Mov => List(BinaryAssInstr(Mov, None, destAssembly, srcAssembly))
             }
             srcInstr ++ destInstr ++ finalInstrs
         }
         case InbuiltFunction(op, src) => op match {
-            case A_Print => Nil
-            case A_Println => Nil
+            case A_PrintI => {
+                usedFunctions.addOne(PrintI)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(PrintI))
+            }
+            case A_PrintB => {
+                usedFunctions.addOne(PrintB)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(PrintB))
+            }
+            case A_PrintC => {
+                usedFunctions.addOne(PrintC)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(PrintC))
+            }
+            case A_PrintS => {
+                usedFunctions.addOne(PrintS)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(PrintS))
+            }
+            case A_PrintA => {
+                usedFunctions.addOne(PrintA)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(PrintA))
+            }
+            case A_Println => {
+                usedFunctions.addOne(PrintLn)
+                List(BranchLinked(PrintLn))
+            }
             case A_ArrayCreate => Nil
-            case A_Assign => Nil
-            case A_Exit => Nil
-            case A_Free => Nil
+            case A_Exit => {    
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(Exit))
+            }
+            case A_Free => {    
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ List(BinaryAssInstr(Mov, None, Return, srcOp),
+                BranchLinked(Free))
+            }
             case A_Len => Nil
             case A_PairCreate => Nil
             case A_Read => Nil

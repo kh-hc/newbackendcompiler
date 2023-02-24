@@ -23,8 +23,9 @@ object Main {
                     } else {
                         val intermediateTranslator = new AbstractTranslator()
                         val finalTranslator = new AssemblyTranslator()
-                        val assembly = finalTranslator.translate(intermediateTranslator.translate(x))
-                        buildAssembly(assembly, args.head)
+                        val intermediateTranslation = intermediateTranslator.translate(x)
+                        val (assembly, inbuilts) = finalTranslator.translate(intermediateTranslation)
+                        buildAssembly(assembly, args.head, inbuilts.toSet)
                         sys.exit(0)
                     }
                 }
@@ -34,7 +35,7 @@ object Main {
                 }
             }
         } catch {
-            case e: Exception => println("Fatal error - File could not be read.")
+            case e: Exception => println(e)
         }
     }
 }

@@ -2,6 +2,7 @@ package wacc
 
 class AbstractTranslator {
     import assemblyAbstractStructure._
+    import SymbolTypes._
     import abstractSyntaxTree._
     
     var intermediateCounter: Int = 0
@@ -50,13 +51,26 @@ class AbstractTranslator {
             val intermediate = getNewIntermediate
             return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Exit, intermediate))
         }
-        case PrintStat(expr) => {
+        case p: PrintStat => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Print, intermediate))
+            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
+                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
+                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
+                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
+                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
+            })
         }
-        case PrintlnStat(expr) => {
+        case p: PrintlnStat => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Println, intermediate))
+            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
+                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
+                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
+                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
+                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintS, intermediate))
+                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
+            }) ++ List(InbuiltFunction(A_Println, Null))
         }
         case IfStat(cond, ifStat, elseStat) => {
             val intermediate = getNewIntermediate
@@ -133,7 +147,7 @@ class AbstractTranslator {
 
     def translateExp(ast: Expr, dest: Value, st: SymbolTable): List[Instruction] = {
         val newdest = getNewIntermediate
-        ast match {
+        return ast match {
             case Identifier(id) => List(UnaryOperation(A_Assign, Stored(st.lookupRecursiveID(id)), dest))
             case Add(exprLeft, exprRight) => translateExp(exprLeft, dest, st) ++ translateExp(exprRight, newdest, st) ++ List(BinaryOperation(A_Add, dest, newdest, dest))
             case Sub(exprLeft, exprRight) => translateExp(exprLeft, dest, st) ++ translateExp(exprRight, newdest, st) ++ List(BinaryOperation(A_Sub, dest, newdest, dest))
@@ -165,6 +179,5 @@ class AbstractTranslator {
             case PairLiteral => List(UnaryOperation(A_Assign, Null, dest))
             case ParenExpr(expr) => translateExp(expr, dest, st)
         }
-        return List.empty
     }
 }

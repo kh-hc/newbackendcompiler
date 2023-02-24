@@ -57,9 +57,13 @@ object assemblyAbstractStructure {
     case object A_Chr extends AssemblyUOperator
     case object A_Ord extends AssemblyUOperator
     case object A_Mov extends AssemblyUOperator
-    case object A_Print extends AssemblyIOperator
+    case object A_PrintI extends AssemblyIOperator
+    case object A_PrintC extends AssemblyIOperator
+    case object A_PrintB extends AssemblyIOperator
+    case object A_PrintS extends AssemblyIOperator
+    case object A_PrintA extends AssemblyIOperator
     case object A_Println extends AssemblyIOperator
-    case object A_Assign extends AssemblyUOperator with AssemblyIOperator
+    case object A_Assign extends AssemblyUOperator
     case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator

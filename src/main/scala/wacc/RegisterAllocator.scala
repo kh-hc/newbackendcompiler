@@ -89,9 +89,10 @@ class RegisterAllocator() {
             pushInstr.append(UnaryAssInstr(Push, None, reg))
             popInstr.append(UnaryAssInstr(Pop, None, reg))
         }
-        popInstr.append(UnaryAssInstr(Pop, None, FP))
-        popInstr.append(UnaryAssInstr(Pop, None, PC))
-        return (pushInstr.toList, popInstr.toList)
+        val revPop = popInstr.reverse
+        revPop.append(UnaryAssInstr(Pop, None, PC))
+        revPop.append(UnaryAssInstr(Pop, None, FP))
+        return (pushInstr.toList, revPop.toList)
     }
 
     def saveArgs(regs: List[Register]): List[AssInstr] = {

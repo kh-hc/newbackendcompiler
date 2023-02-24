@@ -179,8 +179,8 @@ class SemanticAnalyzer(file: String) {
             }
             case ReturnStat(expr) => checkEvaluatesTo(expr, symbolTable, returnType)
             case ExitStat(expr) => checkEvaluatesTo(expr, symbolTable, IntSymbol)
-            case PrintStat(expr) => checkExpression(expr, symbolTable)
-            case PrintlnStat(expr) => checkExpression(expr, symbolTable)
+            case p: PrintStat => p.printType = Option(checkExpression(p.expr, symbolTable))
+            case p: PrintlnStat => p.printType = Option(checkExpression(p.expr, symbolTable))
             case IfStat(cond, ifStat, elseStat) => {
                 checkEvaluatesTo(cond, symbolTable, BoolSymbol)
                 val ifSymbols = new SymbolTable(Some(symbolTable))
