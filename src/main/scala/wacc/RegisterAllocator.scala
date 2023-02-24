@@ -78,12 +78,24 @@ class RegisterAllocator() {
 
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
+        pushInstr.append(UnaryAssInstr(Push, None, FP))
+        pushInstr.append(UnaryAssInstr(Push, None, LR))
+        pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
+        if (stackSize > 0) {
+            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(-(stackSize * 4))))
+        }
         val popInstr = ListBuffer[AssInstr]()
         for (reg <- usedEverRegisters) {
             pushInstr.append(UnaryAssInstr(Push, None, reg))
             popInstr.append(UnaryAssInstr(Pop, None, reg))
         }
+        popInstr.append(UnaryAssInstr(Pop, None, FP))
+        popInstr.append(UnaryAssInstr(Pop, None, PC))
         return (pushInstr.toList, popInstr.toList)
+    }
+
+    def saveArgs(regs: List[Register]): List[AssInstr] = {
+        return regs.map(r => UnaryAssInstr(Push, None, r))
     }
 }
 

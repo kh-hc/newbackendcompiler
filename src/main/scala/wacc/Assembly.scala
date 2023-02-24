@@ -32,7 +32,6 @@ object assemblyCode {
     sealed trait Opcode
     case object Add extends Opcode
     case object Mov extends Opcode
-    case object BL extends Opcode
     case object Ldr extends Opcode
     case object Str extends Opcode
     case object Push extends Opcode
@@ -61,5 +60,5 @@ object assemblyCode {
     case class BranchLinked(function: String) extends AssInstr
 
     case class AssProg(blocks: List[Block])
-    case class Block(label: Label, AssInstrs: List[AssInstr])
+    case class Block(label: Label, instrs: List[AssInstr])
 }
