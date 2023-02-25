@@ -21,7 +21,7 @@ class SystemTestSuite extends AnyFlatSpec {
         runTest(test, testFiles(test))
     }
 
-    def runTest(fileName : String, expectedOutput : String) {
+    def runTest(fileName : String, expectedOutput : (Int, String)) = {
         val filePath = validRootPath + fileName
         // Get the output assembly code from our compiler - stores in emulatorFiles/assemblyCode
         s"./compile $filePath > $filePath.log".! // val exitCode = 
@@ -39,12 +39,21 @@ class SystemTestSuite extends AnyFlatSpec {
         compilerScriptCommand.!
 
         // Run the emulator
+        val stdout = new StringBuilder
+        val stderr = new StringBuilder
+        val logger = ProcessLogger(stdout append _, stderr append _)
         val emulatorScriptCommand = "qemu-arm -L /usr/arm-linux-gnueabi/ " + fileName
-        val actualOutput = emulatorScriptCommand.!
+        val actualExitCode = emulatorScriptCommand ! logger
 
         (filePath) should "be run with our compiler and have the correct output produced" in {
-            assert(actualOutput == expectedOutput)
+            assert(actualExitCode == expectedOutput._1)
+            assert(stdout.toString == expectedOutput._2)
         }
+        println("\n\n")
+        println(fileName)
+        println(stdout.toString())
+        println(s"${expectedOutput._1}, ${expectedOutput._2}")
+        println(stderr.toString())
     }
     
     // Returns the contents of a directory as a List[String]
@@ -65,11 +74,11 @@ class SystemTestSuite extends AnyFlatSpec {
         }    
     }
 
-    def getAllFiles (path : String) : Map[String, String] = {
+    def getAllFiles (path : String) : Map[String, (Int, String)] = {
         // Initialise an array, to which we add all .wacc files found
         // var files = Array[String]()
         // Maps files to their expected outputs
-        var files = Map[String, String]()
+        var files = Map[String, (Int, String)]()
 
         // Get all subdirectories: array, basic, expressions, etc.
         val subdirectories = getDirectoryContents(path)
@@ -109,15 +118,26 @@ class SystemTestSuite extends AnyFlatSpec {
         return returnVal
     }
 
-    def expectedOutput(file : String) : String = {
+    def expectedOutput(file : String) : (Int, String) = {
         val lines = Source.fromFile(new File(file)).getLines()
-        while (lines.hasNext) {
-            val line = lines.next()
-            if (line contains "Output") {
-                val outputLine = lines.next()
-                return outputLine.slice(2, outputLine.length())
+        val terminalOutput = new StringBuilder()
+        val exitCode = 0
+        do {
+            var line = lines.next()
+
+            if (line contains "Output:") {
+                line = lines.next()
+                while(line contains "# "){
+                    terminalOutput.append(line.slice(2, line.length()))
+                    line = lines.next()
+                }
             }
-        }
-        return ""
+
+            if (line contains "Exit:") {
+                val exitLine = lines.next()
+                exitLine.slice(2, exitLine.length()).toInt
+            }
+        } while(lines.hasNext)
+        return (exitCode, terminalOutput.toString())
     }
 }
