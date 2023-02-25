@@ -151,6 +151,7 @@ _println:
         val writer = new BufferedWriter(new FileWriter(outputFile))
         writer.append(assemblyToString(program))
         usedInbuilts.map(inbuilt => writer.append("\n" + inbuiltMap(inbuilt)))
+        writer.append("\n")
         writer.close()
     }
 
