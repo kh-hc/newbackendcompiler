@@ -42,7 +42,7 @@ class SystemTestSuite extends AnyFlatSpec {
         // Run the emulator
         val stdout = new StringBuilder
         val stderr = new StringBuilder
-        val logger = ProcessLogger(stdout append _, stderr append _)
+        val logger = ProcessLogger(stdout append _ + "\n", stderr append _ + "\n")
         //val emulatorScriptCommand = 
         val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger)
         

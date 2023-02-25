@@ -14,8 +14,8 @@ object CodeGenerator{
         Sub -> "sub",
         Cmp -> "cmp",
         Mul -> "mul",
-        And -> "and",
-        Or -> "or",
+        And -> "AND",
+        Or -> "OR",
         // TODO: Update or remove to be correct
         EQ -> "cmp",
         NE -> "cmp",
