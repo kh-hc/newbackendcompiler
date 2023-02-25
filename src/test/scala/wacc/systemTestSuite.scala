@@ -43,18 +43,18 @@ class SystemTestSuite extends AnyFlatSpec {
         val stdout = new StringBuilder
         val stderr = new StringBuilder
         val logger = ProcessLogger(stdout append _, stderr append _)
-        val emulatorScriptCommand = "qemu-arm -L /usr/arm-linux-gnueabi/ " + fileName
-        val actualExitCode = emulatorScriptCommand.!(logger)
-
+        //val emulatorScriptCommand = 
+        val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger)
+        
         (filePath) should "be run with our compiler and have the correct output produced" in {
-            //assert(actualExitCode == expectedOutput._1)
+            assert(actualExitCode == expectedOutput._1)
             assert(stdout.toString == expectedOutput._2)
         }
-        println("\n\n")
-        println(fileName)
-        println(stdout.toString())
-        println(s"${expectedOutput._1}, ${expectedOutput._2}")
-        println(stderr.toString())
+        // println("\n\n")
+        // println(fileName)
+        // println(stdout.toString())
+        // println(s"${expectedOutput._1}, ${expectedOutput._2}")
+        // println(stderr.toString())
     }
 
     def allFiles(path:File):List[File]=
