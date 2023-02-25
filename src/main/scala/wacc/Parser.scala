@@ -8,7 +8,6 @@ object parser {
     import parsley.combinator._
     import parsley.Parsley.attempt
     import parsley.io.ParseFromIO
-    import parsley.character.whitespace
     import java.io.File
 
     import lexer._
@@ -25,7 +24,7 @@ object parser {
     /*
     Array element type parsed via an identifier and then with 0 or more "[expr]".
     */
-    private val arrayElem: Parsley[ArrayElem] = ArrayElem(identifier, many("[" *> expression <* "]"))
+    private val arrayElem: Parsley[ArrayElem] = attempt(ArrayElem(identifier, some("[" *> expression <* "]")))
         .label("Array element")
 
     /* 

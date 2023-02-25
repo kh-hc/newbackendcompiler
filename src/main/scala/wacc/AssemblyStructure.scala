@@ -11,9 +11,9 @@ object assemblyAbstractStructure {
 
     sealed trait Instruction
     
-    case class BinaryOperation(operator: AssemblyOperator, src1: Value, src2: Value, dest: Value) extends Instruction
-    case class UnaryOperation(operator: AssemblyOperator, src: Value, dest: Value) extends Instruction
-    case class InbuiltFunction(operator: AssemblyOperator, src: Value) extends Instruction
+    case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value) extends Instruction
+    case class UnaryOperation(operator: AssemblyUOperator, src: Value, dest: Value) extends Instruction
+    case class InbuiltFunction(operator: AssemblyIOperator, src: Value) extends Instruction
     case class FunctionCall(functionName: String, args: List[Value], returnTo: Value) extends Instruction
 
     case class IfInstruction(condition: Conditional, ifInstructions: List[Instruction], elseInstructions: List[Instruction]) extends Instruction
@@ -34,32 +34,40 @@ object assemblyAbstractStructure {
     case object Fst extends PairPos
     case object Snd extends PairPos
 
-    sealed trait AssemblyOperator
-    case object A_Add extends AssemblyOperator
-    case object A_Sub extends AssemblyOperator
-    case object A_Mul extends AssemblyOperator
-    case object A_Div extends AssemblyOperator
-    case object A_Mod extends AssemblyOperator
-    case object A_And extends AssemblyOperator
-    case object A_Or extends AssemblyOperator
-    case object A_GT extends AssemblyOperator
-    case object A_GTE extends AssemblyOperator
-    case object A_LT extends AssemblyOperator
-    case object A_LTE extends AssemblyOperator
-    case object A_EQ extends AssemblyOperator
-    case object A_NEQ extends AssemblyOperator
-    case object A_Not extends AssemblyOperator
-    case object A_Neg  extends AssemblyOperator
-    case object A_Len extends AssemblyOperator
-    case object A_Chr extends AssemblyOperator
-    case object A_Ord extends AssemblyOperator
-    case object A_Print extends AssemblyOperator
-    case object A_Println extends AssemblyOperator
-    case object A_Assign extends AssemblyOperator
-    case object A_Read extends AssemblyOperator
-    case object A_Free extends AssemblyOperator
-    case object A_Return extends AssemblyOperator
-    case object A_Exit extends AssemblyOperator
-    case object A_ArrayCreate extends AssemblyOperator // src: Length, dst: Addr
-    case object A_PairCreate extends AssemblyOperator // src: Addr
+    sealed trait AssemblyUOperator
+    sealed trait AssemblyBOperator
+    sealed trait AssemblyIOperator
+     
+    case object A_Add extends AssemblyBOperator
+    case object A_Sub extends AssemblyBOperator
+    case object A_Mul extends AssemblyBOperator
+    case object A_Div extends AssemblyBOperator
+    case object A_Mod extends AssemblyBOperator
+    case object A_And extends AssemblyBOperator
+    case object A_Or extends AssemblyBOperator
+    case object A_GT extends AssemblyBOperator
+    case object A_GTE extends AssemblyBOperator
+    case object A_LT extends AssemblyBOperator
+    case object A_LTE extends AssemblyBOperator
+    case object A_EQ extends AssemblyBOperator
+    case object A_NEQ extends AssemblyBOperator
+    case object A_Not extends AssemblyUOperator
+    case object A_Neg  extends AssemblyUOperator
+    case object A_Len extends AssemblyUOperator with AssemblyIOperator
+    case object A_Chr extends AssemblyUOperator
+    case object A_Ord extends AssemblyUOperator
+    case object A_Mov extends AssemblyUOperator
+    case object A_PrintI extends AssemblyIOperator
+    case object A_PrintC extends AssemblyIOperator
+    case object A_PrintB extends AssemblyIOperator
+    case object A_PrintS extends AssemblyIOperator
+    case object A_PrintA extends AssemblyIOperator
+    case object A_Println extends AssemblyIOperator
+    case object A_Assign extends AssemblyUOperator
+    case object A_Read extends AssemblyIOperator
+    case object A_Free extends AssemblyIOperator
+    case object A_Return extends AssemblyIOperator
+    case object A_Exit extends AssemblyIOperator
+    case object A_ArrayCreate extends AssemblyIOperator with AssemblyUOperator// src: Length, dst: Addr
+    case object A_PairCreate extends AssemblyIOperator // src: Addr
 }

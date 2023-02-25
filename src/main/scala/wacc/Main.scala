@@ -1,6 +1,7 @@
 package wacc
 
 import parser.parse
+import CodeGenerator.buildAssembly
 import parsley.{Success, Failure}
 import java.io.File
 
@@ -20,7 +21,11 @@ object Main {
                         sa.getErrors().map(e =>  println(e))
                         sys.exit(200)
                     } else {
-                        val as = new AbstractTranslator()
+                        val intermediateTranslator = new AbstractTranslator()
+                        val finalTranslator = new AssemblyTranslator()
+                        val intermediateTranslation = intermediateTranslator.translate(x)
+                        val (assembly, inbuilts) = finalTranslator.translate(intermediateTranslation)
+                        buildAssembly(assembly, args.head, inbuilts.toSet)
                         sys.exit(0)
                     }
                 }
@@ -30,7 +35,7 @@ object Main {
                 }
             }
         } catch {
-            case e: Exception => println("Fatal exception: File could not be read")
+            case e: Exception => println(e)
         }
     }
 }
