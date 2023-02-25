@@ -86,7 +86,7 @@ class SystemTestSuite extends AnyFlatSpec {
     def expectedOutput(file : String) : (Int, String) = {
         val lines = Source.fromFile(new File(file)).getLines()
         val terminalOutput = new StringBuilder()
-        val exitCode = 0
+        var exitCode = 0
         do {
             var line = lines.next()
 
@@ -100,7 +100,7 @@ class SystemTestSuite extends AnyFlatSpec {
 
             if (line contains "Exit:") {
                 val exitLine = lines.next()
-                exitLine.slice(2, exitLine.length()).toInt
+                exitCode = exitLine.slice(2, exitLine.length()).toInt
             }
         } while(lines.hasNext)
         return (exitCode, terminalOutput.toString())
