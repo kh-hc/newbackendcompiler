@@ -128,7 +128,7 @@ class SystemTestSuite extends AnyFlatSpec {
             if (line contains "Output:") {
                 line = lines.next()
                 while(line contains "# "){
-                    terminalOutput.append(line.slice(2, line.length()))
+                    terminalOutput.append(line.slice(2, line.length()) + "\n")
                     line = lines.next()
                 }
             }
