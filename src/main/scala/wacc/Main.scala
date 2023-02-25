@@ -21,7 +21,6 @@ object Main {
                         sys.exit(200)
                     } else {
                         val as = new AbstractTranslator()
-                        println(as.translate(x))
                         sys.exit(0)
                     }
                 }
