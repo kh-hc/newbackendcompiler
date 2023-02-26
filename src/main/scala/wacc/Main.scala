@@ -24,8 +24,8 @@ object Main {
                         val intermediateTranslator = new AbstractTranslator()
                         val finalTranslator = new AssemblyTranslator()
                         val intermediateTranslation = intermediateTranslator.translate(x)
-                        val (assembly, inbuilts) = finalTranslator.translate(intermediateTranslation)
-                        buildAssembly(assembly, args.head, inbuilts.toSet)
+                        val (assembly, inbuilts, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
+                        buildAssembly(assembly, args.head, inbuilts.toSet, stringLabelMap.toMap)
                         sys.exit(0)
                     }
                 }
@@ -35,7 +35,10 @@ object Main {
                 }
             }
         } catch {
-            case e: Exception => println(e)
+            case e: Exception => {
+                println(s"You're a right fucking moron getting this fucking $e error aren't you you stupid fuck")
+                e.getStackTrace().toArray.map(println)
+            }
         }
     }
 }

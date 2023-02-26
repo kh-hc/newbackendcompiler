@@ -41,7 +41,8 @@ object assemblyCode {
     case object Mul extends Opcode
     case object And extends Opcode
     case object Or extends Opcode
-    
+    case object RightSub extends Opcode
+
     sealed trait Condition
     case object EQ extends Condition with Opcode
     case object NE extends Condition with Opcode
@@ -69,7 +70,12 @@ object assemblyCode {
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
     case class BranchLinked(function: InBuilt) extends AssInstr
+    sealed trait Branch extends AssInstr
+    case class BranchEq(function: String) extends Branch
+    case class BranchUnconditional(function: String) extends Branch
+    case class BranchNe(function: String) extends Branch
     case class CallFunction(function: String) extends AssInstr
+    case class NewLabel(label: String) extends AssInstr
 
     case class AssProg(blocks: List[Block])
     case class Block(label: Label, instrs: List[AssInstr])
