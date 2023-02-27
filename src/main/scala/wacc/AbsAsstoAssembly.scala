@@ -29,7 +29,7 @@ class AssemblyTranslator {
         //TODO link arguments to their registers in the allocator
         val assembly = function.body.map(i => translateInstruction(i, allocator)).flatten
         val (prefix, suffix) = allocator.generateBoilerPlate(true)
-        return Block(Label(function.id), prefix ++ assembly ++ suffix)
+        return Block(Label(function.id), assembly)
     }
 
     // TODO: Deal with arrays, pairs and strings properly
@@ -206,9 +206,9 @@ class AssemblyTranslator {
                 }
                 count = count + 1
             }
-            val (save, unsave) = allocator.saveArgs(assemblyCode.generalRegisters.toList) 
+            //val (save, unsave) = allocator.saveArgs(assemblyCode.generalRegisters.toList) 
             val (dstInstr, dstOp) = translateValue(dst, allocator)
-            (save :+ CallFunction(name)) ++ dstInstr ++ translateMov(Return, dstOp) ++ unsave
+            (CallFunction(name) +: dstInstr) ++ translateMov(Return, dstOp)
         }
         case IfInstruction(condition, ifInstructions, elseInstructions) => {
             val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
