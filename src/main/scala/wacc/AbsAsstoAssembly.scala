@@ -187,11 +187,10 @@ class AssemblyTranslator {
             case A_Len => Nil
             case A_PairCreate => Nil
             case A_Read => Nil
-            case A_Return => Nil
-
-            // We will need to define a separate object containing a map from
-            // AssemblyOperators to the functions and their definitions
-             
+            case A_Return => {
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(SP, FP) ++ translateMov(srcOp, Return) ++ List(UnaryAssInstr(Pop, None, PC), UnaryAssInstr(Pop, None, FP))
+            }
         }
         case FunctionCall(name, args, dst) => Nil
         case IfInstruction(condition, ifInstructions, elseInstructions) => {

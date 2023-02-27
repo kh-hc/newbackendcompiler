@@ -8,6 +8,7 @@ class RegisterAllocator() {
     import Storage._
     var stackSize: Int = 0
     var storage = Map.empty[String, Storage]
+    var stackMap = Map.empty[String, Stored]
     var registerMap = Map.empty[Register, String]
 
     val accessRegisters = Set[Register]()
@@ -59,9 +60,19 @@ class RegisterAllocator() {
             val registerToFree = usedRegisters.dequeue()
             if (registerMap.contains(registerToFree)) {
                 val variableToStore = registerMap.get(registerToFree)
-                stackSize = stackSize + 1
-                freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
-                storage(variableToStore.get) = Stored(stackSize)
+                registerMap.remove(registerToFree)
+                stackMap.get(variableToStore.get) match {
+                    case Some(Stored(x)) =>{
+                        freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * x))))
+                        storage(variableToStore.get) = Stored(x)
+                    }
+                    case None =>{
+                        stackSize += 1
+                        freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
+                        stackMap(variableToStore.get) = Stored(stackSize)
+                        storage(variableToStore.get) = Stored(stackSize)
+                    }
+                }
             }
             availableRegisters.push(registerToFree)
         }

@@ -36,8 +36,7 @@ object Main {
             }
         } catch {
             case e: Exception => {
-                println(s"You're a right fucking moron getting this fucking $e error aren't you you stupid fuck")
-                e.getStackTrace().toArray.map(println)
+                println("Fatal exception: file could not be read")
             }
         }
     }
