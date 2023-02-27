@@ -192,7 +192,23 @@ class AssemblyTranslator {
                 srcInstr ++ translateMov(SP, FP) ++ translateMov(srcOp, Return) ++ List(UnaryAssInstr(Pop, None, PC), UnaryAssInstr(Pop, None, FP))
             }
         }
-        case FunctionCall(name, args, dst) => Nil
+        case FunctionCall(name, args, dst) => {
+            var instr: List[AssInstr] = Nil
+            var count = 0
+            for (arg <- args) {
+                val (argInstr, argOp) = translateValue(arg, allocator)
+                if (count < 4) {
+                    val reg = argumentRegisters(count)
+                    instr = (argInstr ++ translateMov(argOp, reg))++ instr
+                } else {
+                    instr = (argInstr :+ UnaryAssInstr(Push, None, argOp))++ instr
+                }
+                count = count + 1
+            }
+            val (save, unsave) = allocator.saveArgs(assemblyCode.generalRegisters.toList) 
+            val (dstInstr, dstOp) = translateValue(dst, allocator)
+            (save :+ BranchLinkedF(name)) ++ dstInstr ++ translateMov(Return, dstOp) ++ unsave
+        }
         case IfInstruction(condition, ifInstructions, elseInstructions) => {
             val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
             val (assInstr, assOp) = translateValue(condition.value, allocator)

@@ -24,6 +24,7 @@ object assemblyCode {
     case object PC extends ReservedRegister // AssProg counter
 
     val generalRegisters = Set(R4, R5, R6, R7, R8, R9, R10)
+    val argumentRegisters = List(Return, R1, R2, R3)
 
     case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
@@ -70,6 +71,7 @@ object assemblyCode {
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
     case class BranchLinked(function: InBuilt) extends AssInstr
+    case class BranchLinkedF(function: String) extends AssInstr
     sealed trait Branch extends AssInstr
     case class BranchEq(function: String) extends Branch
     case class BranchUnconditional(function: String) extends Branch
