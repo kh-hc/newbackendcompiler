@@ -11,15 +11,16 @@ class AssemblyTranslator {
     var stringsCount = 0
     var labelCount = 0
 
-    def translate(program: Program): (AssProg, Set[InBuilt], Map[String, String]) = {
+    def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
         val main = translateMain(program.main)
-        return (AssProg(List(main)), usedFunctions, stringLabelMap)
+        val funcs = program.functions.map(f => translateFunction(f))
+        return (AssProg(List(main)), usedFunctions, funcs, stringLabelMap)
     }
 
     def translateMain(instructions: List[Instruction]): Block = {
         val allocator = new RegisterAllocator()
         val assembly = instructions.map(i => translateInstruction(i, allocator)).flatten
-        val (prefix, suffix) = allocator.generateBoilerPlate()
+        val (prefix, suffix) = allocator.generateBoilerPlate(false)
         return Block(Label("main"), prefix ++ (assembly :+ BinaryAssInstr(Mov, None, Return, Imm(0))) ++ suffix)
     }
 
@@ -27,7 +28,7 @@ class AssemblyTranslator {
         val allocator = new RegisterAllocator()
         //TODO link arguments to their registers in the allocator
         val assembly = function.body.map(i => translateInstruction(i, allocator)).flatten
-        val (prefix, suffix) = allocator.generateBoilerPlate()
+        val (prefix, suffix) = allocator.generateBoilerPlate(true)
         return Block(Label(function.id), prefix ++ assembly ++ suffix)
     }
 
@@ -189,7 +190,7 @@ class AssemblyTranslator {
             case A_Read => Nil
             case A_Return => {
                 val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(SP, FP) ++ translateMov(srcOp, Return) ++ List(UnaryAssInstr(Pop, None, PC), UnaryAssInstr(Pop, None, FP))
+                srcInstr ++ translateMov(srcOp, Return) ++ translateMov(SP, FP) 
             }
         }
         case FunctionCall(name, args, dst) => {
@@ -207,7 +208,7 @@ class AssemblyTranslator {
             }
             val (save, unsave) = allocator.saveArgs(assemblyCode.generalRegisters.toList) 
             val (dstInstr, dstOp) = translateValue(dst, allocator)
-            (save :+ BranchLinkedF(name)) ++ dstInstr ++ translateMov(Return, dstOp) ++ unsave
+            (save :+ CallFunction(name)) ++ dstInstr ++ translateMov(Return, dstOp) ++ unsave
         }
         case IfInstruction(condition, ifInstructions, elseInstructions) => {
             val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten

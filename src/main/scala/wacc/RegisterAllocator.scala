@@ -88,25 +88,27 @@ class RegisterAllocator() {
         storage(name) = Reg(register)
     }
 
-    def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
+    def generateBoilerPlate(flag: Boolean): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
-        pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(UnaryAssInstr(Push, None, LR))
+        pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
             pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
         }
         val popInstr = ListBuffer[AssInstr]()
-        for (reg <- usedEverRegisters) {
-            pushInstr.append(UnaryAssInstr(Push, None, reg))
-            popInstr.append(UnaryAssInstr(Pop, None, reg))
+        if (!flag) {
+            for (reg <- usedEverRegisters) {
+                pushInstr.append(UnaryAssInstr(Push, None, reg))
+                popInstr.append(UnaryAssInstr(Pop, None, reg))
+            }
         }
         val revPop = popInstr.reverse
         if (stackSize > 0) {
             revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
         }
-        revPop.append(UnaryAssInstr(Pop, None, PC))
         revPop.append(UnaryAssInstr(Pop, None, FP))
+        revPop.append(UnaryAssInstr(Pop, None, PC))
         return (pushInstr.toList, revPop.toList)
     }
 

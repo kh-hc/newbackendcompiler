@@ -161,10 +161,12 @@ _println:
     pop {r1}
 	pop {pc}""")
     
-    def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], usedStringConstants: Map[String, String]) = {
+    def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
         val outputFile = new File(newFileName(waccName))
         val writer = new BufferedWriter(new FileWriter(outputFile))
+
         writer.append(assemblyToString(program, usedStringConstants))
+        funcs.map(f => writer.append("\n" + blockToString(f)))
         usedInbuilts.map(inbuilt => writer.append("\n" + inbuiltMap(inbuilt)))
         writer.append("\n")
         writer.close()
@@ -195,6 +197,9 @@ _println:
         block.instrs.map(i => {
             blockSB.append(instructionToString(i))
             blockSB.append("\n")})
+        if (block.label.label != ("main")) {
+            blockSB.append(".ltorg\n")
+        }
         return blockSB
     }
 
@@ -260,7 +265,9 @@ _println:
                 instructionBuilder.append(operands.head)
                 operands.tail.map(o => instructionBuilder.append(", " + operandToString(o)))
             }
-            case CallFunction(_) => instructionBuilder
+            case CallFunction(function) => {
+                instructionBuilder.append("bl wacc_" + function)
+            }
         }
         return instructionBuilder
     }

@@ -71,7 +71,6 @@ object assemblyCode {
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
     case class BranchLinked(function: InBuilt) extends AssInstr
-    case class BranchLinkedF(function: String) extends AssInstr
     sealed trait Branch extends AssInstr
     case class BranchEq(function: String) extends Branch
     case class BranchUnconditional(function: String) extends Branch

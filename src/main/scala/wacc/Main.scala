@@ -24,8 +24,8 @@ object Main {
                         val intermediateTranslator = new AbstractTranslator()
                         val finalTranslator = new AssemblyTranslator()
                         val intermediateTranslation = intermediateTranslator.translate(x)
-                        val (assembly, inbuilts, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
-                        buildAssembly(assembly, args.head, inbuilts.toSet, stringLabelMap.toMap)
+                        val (assembly, inbuilts, funcs, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
+                        buildAssembly(assembly, args.head, inbuilts.toSet, funcs, stringLabelMap.toMap)
                         sys.exit(0)
                     }
                 }

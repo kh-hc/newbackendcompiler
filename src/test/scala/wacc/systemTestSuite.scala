@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/expressions"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/function"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
