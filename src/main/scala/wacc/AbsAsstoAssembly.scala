@@ -29,7 +29,7 @@ class AssemblyTranslator {
         //TODO link arguments to their registers in the allocator
         val assembly = function.body.map(i => translateInstruction(i, allocator)).flatten
         val (prefix, suffix) = allocator.generateBoilerPlate(true)
-        return Block(Label(function.id), assembly)
+        return Block(Label(function.id), prefix ++ assembly ++ suffix)
     }
 
     // TODO: Deal with arrays, pairs and strings properly
