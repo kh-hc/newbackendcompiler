@@ -238,7 +238,18 @@ class AssemblyTranslator {
             conditionalInstr ++ assInstr ++ (BinaryAssInstr(Cmp, None, assOp, Imm(1)) +: BranchNe(elseLabel) +: ifInstructions.map(i => translateInstruction(i, allocator)).flatten :+ BranchUnconditional(endLabel)) ++ 
             (NewLabel(elseLabel) +: elseInstructions.map(i => translateInstruction(i, allocator)).flatten :+ NewLabel(endLabel))
         }
-        case WhileInstruction(condition, body) => Nil
+        case WhileInstruction(condition, body) => {
+            println(condition.conditions)
+            val condInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
+            val (assInstr, assOp) = translateValue(condition.value, allocator)
+            val condLabel = generateLabel(labelCount)
+            labelCount = labelCount + 1
+            val loopLabel = generateLabel(labelCount)
+            labelCount = labelCount + 1
+            val bodyInstr = body.map(i => translateInstruction(i, allocator)).flatten
+
+            (assInstr ++ List(BranchUnconditional(condLabel), NewLabel(loopLabel)) ++ bodyInstr) ++ (NewLabel(condLabel) +: condInstr) ++ (assInstr :+ BinaryAssInstr(Cmp, None, assOp, Imm(1))) :+ BranchEq(loopLabel)
+        }
     }
 
     def generateLabel(counter: Int): String = s".L${counter.toString}"
