@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import java.io.File
 import scala.io.Source
 import scala.sys.process._
+import scala.collection.mutable.Map
 
 /*
 System test suite, which tests the whole compiler by checking its output is correct
@@ -13,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/basic/"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -22,7 +23,7 @@ class SystemTestSuite extends AnyFlatSpec {
     }
 
     def runTest(fileName : String, expectedOutput : (Int, String)) = {
-        val filePath = validRootPath + fileName
+        val filePath = fileName
         // Get the output assembly code from our compiler - stores in emulatorFiles/assemblyCode
         s"./compile $filePath > $filePath.log".! // val exitCode = 
 
@@ -41,70 +42,34 @@ class SystemTestSuite extends AnyFlatSpec {
         // Run the emulator
         val stdout = new StringBuilder
         val stderr = new StringBuilder
-        val logger = ProcessLogger(stdout append _, stderr append _)
-        val emulatorScriptCommand = "qemu-arm -L /usr/arm-linux-gnueabi/ " + fileName
-        val actualExitCode = emulatorScriptCommand ! logger
-
+        val logger = ProcessLogger(stdout append _ + "\n", stderr append _ + "\n")
+        //val emulatorScriptCommand = 
+        val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger)
+        
         (filePath) should "be run with our compiler and have the correct output produced" in {
             assert(actualExitCode == expectedOutput._1)
             assert(stdout.toString == expectedOutput._2)
         }
-        println("\n\n")
-        println(fileName)
-        println(stdout.toString())
-        println(s"${expectedOutput._1}, ${expectedOutput._2}")
-        println(stderr.toString())
-    }
-    
-    // Returns the contents of a directory as a List[String]
-    def getDirectoryContents (path : String) : List[String] = {
-        val filePath = new File(path)
-        filePath.listFiles
-                .map(_.getName)
-                .toList
-    }
-    
-    // Because the Java isFile() function doesn't seem to work for .wacc files...
-    // We know there are only .wacc files in the directory, so this function works
-    def isAFile (fileName : String) : Boolean = {
-        if (fileName.length < 5) {
-            return false
-        } else {
-            return fileName.substring(fileName.length() - 5) == ".wacc"
-        }    
+        // println("\n\n")
+        // println(fileName)
+        // println(stdout.toString())
+        // println(s"${expectedOutput._1}, ${expectedOutput._2}")
+        // println(stderr.toString())
     }
 
+    def allFiles(path:File):List[File]=
+   {    
+       val parts=path.listFiles.toList.partition(_.isDirectory)
+       parts._2 ::: parts._1.flatMap(allFiles)         
+   }
+
+    
     def getAllFiles (path : String) : Map[String, (Int, String)] = {
-        // Initialise an array, to which we add all .wacc files found
-        // var files = Array[String]()
-        // Maps files to their expected outputs
-        var files = Map[String, (Int, String)]()
-
-        // Get all subdirectories: array, basic, expressions, etc.
-        val subdirectories = getDirectoryContents(path)
-        for (subdirectory <- subdirectories) {
-            // Get all the files and subdirectories for each subdirectory
-            val subs = getDirectoryContents(path + subdirectory)
-            for (file <- subs) {
-                val filePath = path + subdirectory + "/" + file
-                // If it's a file which contains a print statement, add to the array of files
-                if (isAFile(file)) {
-                    if (containsPrintStatement(filePath)) {
-                        files = files + (s"$subdirectory/$file" -> expectedOutput(filePath))
-                    }
-                } else {
-                    // Deals with one layer of nesting
-                    val finalFiles = getDirectoryContents(s"$path$subdirectory/$file")
-                    for (f <- finalFiles) {
-                        val fullFilePath = filePath + "/" + f
-                        if (containsPrintStatement(fullFilePath)) {
-                            files = files + (s"$subdirectory/$file/$f" -> expectedOutput(fullFilePath))
-                        }
-                    }
-                }
-            }
-        }
-        return files
+        val dir = new File(path)
+        val fileMap = Map.empty[String, (Int, String)]
+        val files = allFiles(dir)
+        files.map(f => fileMap.addOne(f.toString(), expectedOutput(f.toString())))
+        return fileMap
     }
 
     // Checks if the file contains a print or println statement
@@ -121,7 +86,7 @@ class SystemTestSuite extends AnyFlatSpec {
     def expectedOutput(file : String) : (Int, String) = {
         val lines = Source.fromFile(new File(file)).getLines()
         val terminalOutput = new StringBuilder()
-        val exitCode = 0
+        var exitCode = 0
         do {
             var line = lines.next()
 
@@ -135,7 +100,7 @@ class SystemTestSuite extends AnyFlatSpec {
 
             if (line contains "Exit:") {
                 val exitLine = lines.next()
-                exitLine.slice(2, exitLine.length()).toInt
+                exitCode = exitLine.slice(2, exitLine.length()).toInt
             }
         } while(lines.hasNext)
         return (exitCode, terminalOutput.toString())

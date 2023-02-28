@@ -24,8 +24,8 @@ object Main {
                         val intermediateTranslator = new AbstractTranslator()
                         val finalTranslator = new AssemblyTranslator()
                         val intermediateTranslation = intermediateTranslator.translate(x)
-                        val (assembly, inbuilts) = finalTranslator.translate(intermediateTranslation)
-                        buildAssembly(assembly, args.head, inbuilts.toSet)
+                        val (assembly, inbuilts, funcs, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
+                        buildAssembly(assembly, args.head, inbuilts.toSet, funcs, stringLabelMap.toMap)
                         sys.exit(0)
                     }
                 }
@@ -35,7 +35,11 @@ object Main {
                 }
             }
         } catch {
-            case e: Exception => println(e)
+            case e: Exception => {
+                println(e)
+                println(e.getCause())
+                println(e.getStackTrace())
+            }
         }
     }
 }

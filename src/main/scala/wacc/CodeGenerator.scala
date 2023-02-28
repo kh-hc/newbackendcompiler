@@ -5,17 +5,18 @@ object CodeGenerator{
     import assemblyCode._
 
     val opcodeMap = Map[Opcode, String](
-        Add -> "add",
+        Add -> "adds",
         Mov -> "mov",
         Ldr -> "ldr",
         Str -> "str",
         Push -> "push",
         Pop -> "pop",
-        Sub -> "sub",
+        Sub -> "subs",
+        RightSub -> "rsbs",
         Cmp -> "cmp",
-        Mul -> "mul",
+        Mul -> "muls",
         And -> "and",
-        Or -> "or",
+        Or -> "orr",
         // TODO: Update or remove to be correct
         EQ -> "cmp",
         NE -> "cmp",
@@ -25,13 +26,27 @@ object CodeGenerator{
         LE -> "cmp"
     )
 
+    val condMap = Map[Condition, String](
+        EQ -> "eq",
+        NE -> "ne",
+        GE -> "ge",
+        LT -> "lt",
+        GT -> "gt",
+        LE -> "le",
+        VS -> "vs" 
+    )
+
     val inbuiltNameMap = Map[InBuilt, String](
         PrintI -> "_printi",
         PrintB -> "_printb",
         PrintC -> "_printc",
         PrintS -> "_prints",
         PrintA -> "_printp",
-        PrintLn -> "_println"
+        PrintLn -> "_println",
+        DivMod -> "__aeabi_idivmod",
+        Overflow -> "_errOverflow",
+        DivZero -> "_errDivZero_str0",
+        Exit -> "exit"
     )
 
     val registerMap = Map[Register, String](
@@ -61,11 +76,13 @@ object CodeGenerator{
 .text
 _printi:
     push {lr}
+    push {r1}
     mov r1, r0
     ldr r0, =.L._printi_str0
     bl printf
     mov r0, #0
     bl fflush
+    pop {r1}
     pop {pc}""",
         PrintB -> """.data
     .word 5
@@ -80,6 +97,7 @@ _printi:
 .text
 _printb:
     push {lr}
+    push {r1, r2}
     cmp r0, #0
     bne .L_printb0
     ldr r2, =.L._printb_str0
@@ -92,6 +110,7 @@ _printb:
     bl printf
     mov r0, #0
     bl fflush
+    pop {r1, r2}
     pop {pc}""",
         PrintC -> """.data
     .word 2
@@ -100,11 +119,13 @@ _printb:
 .text
 _printc:
 	push {lr}
+    push {r1}
 	mov r1, r0
 	ldr r0, =.L._printc_str0
 	bl printf
 	mov r0, #0
 	bl fflush
+    pop {r1}
 	pop {pc}""",
         PrintS ->""".data
     .word 4
@@ -113,12 +134,14 @@ _printc:
 .text
 _prints:
 	push {lr}
+    push {r1, r2}
 	mov r2, r0
 	ldr r1, [r0, #-4]
 	ldr r0, =.L._prints_str0
 	bl printf
 	mov r0, #0
 	bl fflush
+    pop {r1, r2}
 	pop {pc}""",
         PrintA -> """.data
     .word 2
@@ -127,11 +150,13 @@ _prints:
 .text
 _printp:
 	push {lr}
+    push {r1}
 	mov r1, r0
 	ldr r0, =.L._printp_str0
 	bl printf
 	mov r0, #0
 	bl fflush
+    pop {r1}
 	pop {pc}""",
         PrintLn -> """.data
     .word 0
@@ -140,30 +165,64 @@ _printp:
 .text
 _println:
 	push {lr}
+    push {r1}
 	ldr r0, =.L._println_str0
 	bl puts
 	mov r0, #0
 	bl fflush
-	pop {pc}""")
+    pop {r1}
+	pop {pc}""",
+        Overflow -> """
+.data
+@ length of .L._errOverflow_str0
+    .word 52
+.L._errOverflow_str0:
+    .asciz "fatal error: integer overflow or underflow occurred\n"
+.text
+_errOverflow:
+    ldr r0, =.L._errOverflow_str0
+    bl _prints
+    mov r0, #255
+    bl exit
+""",
+        DivZero -> """
+.data
+	@ length of .L._errDivZero_str0
+		.word 40
+.L._errDivZero_str0:
+	.asciz "fatal error: division or modulo by zero\n"
+.text
+_errDivZero:
+	ldr r0, =.L._errDivZero_str0
+	bl _prints
+	mov r0, #255
+	bl exit
+""")
     
-    def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt]) = {
+    def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
         val outputFile = new File(newFileName(waccName))
         val writer = new BufferedWriter(new FileWriter(outputFile))
-        writer.append(assemblyToString(program))
+
+        writer.append(assemblyToString(program, usedStringConstants))
+        funcs.map(f => writer.append("\n" + blockToString(f)))
         usedInbuilts.map(inbuilt => writer.append("\n" + inbuiltMap(inbuilt)))
+        writer.append("\n")
         writer.close()
     }
 
     private def newFileName(fileName: String): String = fileName.dropRight(5).split("/").last + ".s"
 
-    def assemblyToString(program: AssProg): StringBuilder = {
+    def assemblyToString(program: AssProg, usedStrings: Map[String, String]): StringBuilder = {
         val assembly = new StringBuilder()
         assembly.append(".data\n")
+        usedStrings.map{case (label, str) => assembly.append(makeLabel(label, str))}
         assembly.append(".text\n")
         assembly.append(".global main\n")
         program.blocks.map(b => assembly.append(blockToString(b)))
         return assembly
     }
+
+    def makeLabel(label: String, str: String): String = s"  .word ${(str.length + 1).toString}\n$label:\n    .asciz \"${str}\"\n"
 
     def blockToString(block: Block): StringBuilder = {
         val blockSB = new StringBuilder()
@@ -176,6 +235,9 @@ _println:
         block.instrs.map(i => {
             blockSB.append(instructionToString(i))
             blockSB.append("\n")})
+        if (block.label.label != ("main")) {
+            blockSB.append(".ltorg\n")
+        }
         return blockSB
     }
 
@@ -188,6 +250,19 @@ _println:
                 instructionBuilder.append(operandToString(op2) + ", ")
                 instructionBuilder.append(operandToString(op3) + ", ")
                 instructionBuilder.append(operandToString(op4))
+            }
+            case TernaryAssInstr(op: Condition, cond, op1, op2, op3) => {
+                instructionBuilder.append(opcodeMap(op) + " ")
+                instructionBuilder.append(operandToString(op2) + ", ")
+                instructionBuilder.append(operandToString(op3) + "\n")
+                instructionBuilder.append(op match {
+                    case EQ => constructEquality(op1)
+                    case NE => constructNoEquality(op1)
+                    case LT => constructLessThan(op1)
+                    case GT => constructGreaterThan(op1)
+                    case GE => constructGreaterThanOrEqual(op1)
+                    case LE => constructLessThanOrEqual(op1)
+                })
             }
             case TernaryAssInstr(op, cond, op1, op2, op3) => {
                 instructionBuilder.append(opcodeMap(op) + " ")
@@ -208,21 +283,52 @@ _println:
                     instructionBuilder.append(operandToString(op1))
                 }
             }
-            case BranchLinked(function) => {
-                instructionBuilder.append("bl " + inbuiltNameMap(function))
+            case BranchLinked(function, condCode) => {
+                condCode match {
+                    case None => instructionBuilder.append("bl " + inbuiltNameMap(function))
+                    case Some(cond) => instructionBuilder.append("bl" + condMap(cond) + " " + inbuiltNameMap(function))
+                }
+            }
+            case BranchEq(label) => {
+                instructionBuilder.append(s"beq $label")
+            }
+            case BranchNe(label) => {
+                instructionBuilder.append(s"bne $label")
+            }
+            case BranchUnconditional(label) => {
+                instructionBuilder.append(s"b $label")
+            }
+            case NewLabel(label) => {
+                instructionBuilder.append(s"$label:")
             }
             case MultiAssInstr(op, operands) => {
                 instructionBuilder.append(opcodeMap(op) + " ")
                 instructionBuilder.append(operands.head)
                 operands.tail.map(o => instructionBuilder.append(", " + operandToString(o)))
             }
+            case CallFunction(function) => {
+                instructionBuilder.append("bl wacc_" + function)
+            }
         }
         return instructionBuilder
     }
 
+    // These equality builders assume that operand is the destination for the equality
+    def constructEquality(operand: Operand): String = s"moveq ${operandToString(operand)}, #1\nmovne ${operandToString(operand)}, #0"
+
+    def constructNoEquality(operand: Operand): String = s"movne ${operandToString(operand)}, #1\nmoveq ${operandToString(operand)}, #0"
+
+    def constructGreaterThan(operand: Operand): String = s"movgt ${operandToString(operand)}, #1\nmovle ${operandToString(operand)}, #0"
+
+    def constructLessThan(operand: Operand): String = s"movlt ${operandToString(operand)}, #1\nmovge ${operandToString(operand)}, #0"
+
+    def constructGreaterThanOrEqual(operand: Operand): String = s"movge ${operandToString(operand)}, #1\nmovlt ${operandToString(operand)}, #0"
+
+    def constructLessThanOrEqual(operand: Operand): String = s"movle ${operandToString(operand)}, #1\nmovgt ${operandToString(operand)}, #0"
+
     def operandToString(operand: Operand): String = operand match{
         case r: Register => registerMap(r)
-        case Label(label) => label
+        case Label(label) => s"=$label"
         case Offset(reg, offset) => s"[${operandToString(reg)}, ${operandToString(offset)}]"
         case Imm(x) => s"#${x.toString()}"
     }

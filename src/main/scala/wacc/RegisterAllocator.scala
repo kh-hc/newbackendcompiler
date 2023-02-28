@@ -8,6 +8,7 @@ class RegisterAllocator() {
     import Storage._
     var stackSize: Int = 0
     var storage = Map.empty[String, Storage]
+    var stackMap = Map.empty[String, Stored]
     var registerMap = Map.empty[Register, String]
 
     val accessRegisters = Set[Register]()
@@ -19,14 +20,14 @@ class RegisterAllocator() {
 
     // Note that this is heavily unoptimized
     def getRegister(name: String): (List[AssInstr], Register) = storage.get(name) match{
-        case Some(store) => store match {
+        case Some(s) => s match {
             case Reg(r) => {
                 return (Nil, r)
             }
             case Stored(offset) => {
                 val (instructions, register) = getFreeRegister()
-                storage.addOne((name, Reg(register)))
-                return (instructions, register)
+                store(name, register)
+                return (instructions :+ BinaryAssInstr(Ldr, None, register, Offset(FP, Imm(-(4 * offset)))), register)
             }
         }
         case None => {
@@ -59,10 +60,21 @@ class RegisterAllocator() {
             val registerToFree = usedRegisters.dequeue()
             if (registerMap.contains(registerToFree)) {
                 val variableToStore = registerMap.get(registerToFree)
-                stackSize = stackSize + 1
-                freeingInstructions += BinaryAssInstr(Str, None, Offset(FP, Imm(4 * stackSize)), registerToFree)
-                storage(variableToStore.get) = Stored(stackSize)
-            }            
+                registerMap.remove(registerToFree)
+                stackMap.get(variableToStore.get) match {
+                    case Some(Stored(x)) =>{
+                        freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * x))))
+                        storage(variableToStore.get) = Stored(x)
+                    }
+                    case None =>{
+                        stackSize += 1
+                        freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
+                        stackMap(variableToStore.get) = Stored(stackSize)
+                        storage(variableToStore.get) = Stored(stackSize)
+                    }
+                }
+            }
+            availableRegisters.push(registerToFree)
         }
         val reg = availableRegisters.pop()
         usedEverRegisters.add(reg)
@@ -76,13 +88,31 @@ class RegisterAllocator() {
         storage(name) = Reg(register)
     }
 
+    def loadArgs(args: List[String]): List[AssInstr] = {
+        var count = 0
+        val numberOfArgs = args.length
+        val retrievalInstrs = new ListBuffer[AssInstr]
+        for (arg <- args) {
+                if (count < 4) {
+                    val reg = argumentRegisters(count)
+                    val (instrs, newReg) = getRegister(arg)
+                    retrievalInstrs.addAll(instrs)
+                    retrievalInstrs += BinaryAssInstr(Mov, None, newReg, reg)
+                } else {
+                    storage(arg) = Stored((numberOfArgs + 2 - count) * -1)
+                }
+                count = count + 1
+            }
+        retrievalInstrs.toList
+    }
+
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
-        pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(UnaryAssInstr(Push, None, LR))
+        pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(-(stackSize * 4))))
+            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
         }
         val popInstr = ListBuffer[AssInstr]()
         for (reg <- usedEverRegisters) {
@@ -90,13 +120,17 @@ class RegisterAllocator() {
             popInstr.append(UnaryAssInstr(Pop, None, reg))
         }
         val revPop = popInstr.reverse
-        revPop.append(UnaryAssInstr(Pop, None, PC))
+        if (stackSize > 0) {
+            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
+        }
         revPop.append(UnaryAssInstr(Pop, None, FP))
+        revPop.append(UnaryAssInstr(Pop, None, PC))
         return (pushInstr.toList, revPop.toList)
     }
 
-    def saveArgs(regs: List[Register]): List[AssInstr] = {
-        return regs.map(r => UnaryAssInstr(Push, None, r))
+    def saveArgs(regs: List[Register]): (List[AssInstr], List[AssInstr]) = {
+        // TODO: Save these properly
+        return (regs.map(r => UnaryAssInstr(Push, None, r)).toList, regs.map(r => UnaryAssInstr(Pop, None, r)).reverse.toList)
     }
 }
 
