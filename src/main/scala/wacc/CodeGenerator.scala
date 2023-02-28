@@ -5,16 +5,16 @@ object CodeGenerator{
     import assemblyCode._
 
     val opcodeMap = Map[Opcode, String](
-        Add -> "add",
+        Add -> "adds",
         Mov -> "mov",
         Ldr -> "ldr",
         Str -> "str",
         Push -> "push",
         Pop -> "pop",
-        Sub -> "sub",
+        Sub -> "subs",
         RightSub -> "rsbs",
         Cmp -> "cmp",
-        Mul -> "mul",
+        Mul -> "muls",
         And -> "and",
         Or -> "orr",
         // TODO: Update or remove to be correct
@@ -26,6 +26,16 @@ object CodeGenerator{
         LE -> "cmp"
     )
 
+    val condMap = Map[Condition, String](
+        EQ -> "eq",
+        NE -> "ne",
+        GE -> "ge",
+        LT -> "lt",
+        GT -> "gt",
+        LE -> "le",
+        VS -> "vs" 
+    )
+
     val inbuiltNameMap = Map[InBuilt, String](
         PrintI -> "_printi",
         PrintB -> "_printb",
@@ -34,6 +44,8 @@ object CodeGenerator{
         PrintA -> "_printp",
         PrintLn -> "_println",
         DivMod -> "__aeabi_idivmod",
+        Overflow -> "_errOverflow",
+        DivZero -> "_errDivZero_str0",
         Exit -> "exit"
     )
 
@@ -159,7 +171,33 @@ _println:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""")
+	pop {pc}""",
+        Overflow -> """
+.data
+@ length of .L._errOverflow_str0
+    .word 52
+.L._errOverflow_str0:
+    .asciz "fatal error: integer overflow or underflow occurred\n"
+.text
+_errOverflow:
+    ldr r0, =.L._errOverflow_str0
+    bl _prints
+    mov r0, #255
+    bl exit
+""",
+        DivZero -> """
+.data
+	@ length of .L._errDivZero_str0
+		.word 40
+.L._errDivZero_str0:
+	.asciz "fatal error: division or modulo by zero\n"
+.text
+_errDivZero:
+	ldr r0, =.L._errDivZero_str0
+	bl _prints
+	mov r0, #255
+	bl exit
+""")
     
     def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
         val outputFile = new File(newFileName(waccName))
@@ -245,8 +283,11 @@ _println:
                     instructionBuilder.append(operandToString(op1))
                 }
             }
-            case BranchLinked(function) => {
-                instructionBuilder.append("bl " + inbuiltNameMap(function))
+            case BranchLinked(function, condCode) => {
+                condCode match {
+                    case None => instructionBuilder.append("bl " + inbuiltNameMap(function))
+                    case Some(cond) => instructionBuilder.append("bl" + condMap(cond) + " " + inbuiltNameMap(function))
+                }
             }
             case BranchEq(label) => {
                 instructionBuilder.append(s"beq $label")

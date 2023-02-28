@@ -51,6 +51,7 @@ object assemblyCode {
     case object LT extends Condition with Opcode
     case object GT extends Condition with Opcode
     case object LE extends Condition with Opcode
+    case object VS extends Condition with Opcode
 
     sealed trait InBuilt
     case object PrintI extends InBuilt
@@ -60,8 +61,10 @@ object assemblyCode {
     case object PrintA extends InBuilt
     case object PrintLn extends InBuilt
     case object DivMod extends InBuilt
+    case object DivZero extends InBuilt
     case object Exit extends InBuilt
     case object Free extends InBuilt
+    case object Overflow extends InBuilt
     
     sealed trait AssInstr
     // General convention being dest src src1 ...
@@ -70,7 +73,7 @@ object assemblyCode {
     case class BinaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand, op2: Operand) extends AssInstr
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
-    case class BranchLinked(function: InBuilt) extends AssInstr
+    case class BranchLinked(function: InBuilt, cond: Option[Condition]) extends AssInstr
     sealed trait Branch extends AssInstr
     case class BranchEq(function: String) extends Branch
     case class BranchUnconditional(function: String) extends Branch

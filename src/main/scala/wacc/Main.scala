@@ -36,7 +36,9 @@ object Main {
             }
         } catch {
             case e: Exception => {
-                println("Fatal exception: file could not be read")
+                println(e)
+                println(e.getCause())
+                println(e.getStackTrace())
             }
         }
     }
