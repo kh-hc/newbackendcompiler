@@ -125,13 +125,27 @@ class AbstractTranslator {
 
     def translateLvalue(value: Lvalue, st: SymbolTable): (Value, List[Instruction]) = value match {
         case PairElemFst(pairToDeref) => {
-            val (pair, instr) = translateLvalue(pairToDeref, st)
-            return (PairAccess(Snd, pair), instr)
+             val (pair, instr) = translateLvalue(pairToDeref, st)
+            pair match {
+            case d: DerefType => {
+                // Dereference the address to another reg
+                val intermediate = getNewIntermediate
+                (PairAccess(Fst, intermediate), instr :+ UnaryOperation(A_Mov, pair, intermediate))
+            }
+            case _ => (PairAccess(Fst, pair), instr)
         }
+    }        
         case PairElemSnd(pairToDeref) => {
-            val (pair, instr) = translateLvalue(pairToDeref, st)
-            return (PairAccess(Snd, pair), instr)
+             val (pair, instr) = translateLvalue(pairToDeref, st)
+            pair match {
+            case d: DerefType => {
+                // Dereference the address to another reg
+                val intermediate = getNewIntermediate
+                (PairAccess(Snd, intermediate), instr :+ UnaryOperation(A_Mov, pair, intermediate))
+            }
+            case _ => (PairAccess(Snd, pair), instr)
         }
+    }
         case Identifier(id) => (Stored(st.lookupRecursiveID(id)), List.empty)
         case ArrayElem(id, position) => {
             var positions: List[Value] = List.empty
@@ -141,7 +155,7 @@ class AbstractTranslator {
                 positions = positions :+ inter
                 instructions = instructions ::: translateExp(pos, inter, st) 
             }
-            return (ArrayAccess(positions, Stored(st.lookupRecursiveID(id.id))), instructions)
+            (ArrayAccess(positions, Stored(st.lookupRecursiveID(id.id))), instructions)
         }
     }
 

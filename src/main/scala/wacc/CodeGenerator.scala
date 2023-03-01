@@ -200,16 +200,13 @@ _errDivZero:
 	mov r0, #255
 	bl exit
 """,
-    Free -> """_freepair:
+    Free -> """.text
+_freepair:
     push {lr}
     push {r8}
     mov r8, r0
     cmp r8, #0
     bleq _errNull
-    ldr r0, [r8, #0]
-    bl free
-    ldr r0, [r8, #4]
-    bl free
     mov r0, r8
     bl free
     pop {r8}

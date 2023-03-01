@@ -1,7 +1,5 @@
 package wacc
 
-import scala.collection.mutable.ListBuffer
-
 class AssemblyTranslator {
     import assemblyCode._
     import assemblyAbstractStructure._
@@ -255,7 +253,8 @@ class AssemblyTranslator {
 
     def generateStringLabel(counter: Int): String = s".L.str${counter.toString}"
 
-    def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): List[AssInstr] = (srcAss, dstAss) match {
+    def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): List[AssInstr] = {
+        (srcAss, dstAss) match {
         case (Label(label), Offset(reg, offset)) => {
             reg match {
                 case Offset(derefReg, derefOffset) => {
@@ -289,9 +288,7 @@ class AssemblyTranslator {
         }
         case (o, Offset(reg, offset)) => {
             reg match {
-                case Offset(derefReg, derefOffset) => {
-                    Nil
-                }
+                case Offset(derefReg, derefOffset) => Nil
                 case r: Register => {
                     val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
                     accessInstr ++ List(BinaryAssInstr(Mov, None, accessReg, o),
@@ -302,4 +299,5 @@ class AssemblyTranslator {
         }
         case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
     }
+}
 }
