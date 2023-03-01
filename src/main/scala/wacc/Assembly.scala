@@ -40,6 +40,7 @@ object assemblyCode {
     case object Sub extends Opcode
     case object Cmp extends Opcode
     case object Mul extends Opcode
+    case object Smull extends Opcode
     case object And extends Opcode
     case object Or extends Opcode
     case object RightSub extends Opcode

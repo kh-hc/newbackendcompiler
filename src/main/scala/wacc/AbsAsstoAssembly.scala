@@ -98,15 +98,19 @@ class AssemblyTranslator {
                 }
                 case A_Div => {
                     val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
+                    usedFunctions.addOne(DivZero)
+                    usedFunctions.addOne(PrintS)
                     saveRegs ++ List(BinaryAssInstr(Mov, None, Return, src1Assembly),
                     BinaryAssInstr(Mov, None, R1, src2Assembly),
                     BinaryAssInstr(Cmp, None, R1, Imm(0)),
-                    //BranchLinked(DivZero, Some(EQ)),
+                    BranchLinked(DivZero, Some(EQ)),
                     BranchLinked(DivMod, None),
                     BinaryAssInstr(Mov, None, destAssembly, Return)) ++ restoreRegs
                 }
                 case A_Mod => {
                     val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
+                    usedFunctions.addOne(DivZero)
+                    usedFunctions.addOne(PrintS)
                     saveRegs ++ List(BinaryAssInstr(Mov, None, Return, src1Assembly),
                     BinaryAssInstr(Mov, None, R1, src2Assembly),
                     BranchLinked(DivMod, None),
@@ -139,7 +143,12 @@ class AssemblyTranslator {
             }
             val finalInstrs = op match {
                 case A_Not => List(TernaryAssInstr(NE, None, destAssembly, srcAssembly, Imm(1)))
-                case A_Neg => List(TernaryAssInstr(RightSub, None, destAssembly, srcAssembly, Imm(0)))
+                case A_Neg => {
+                    usedFunctions.addOne(Overflow)
+                    usedFunctions.addOne(PrintS)
+                    List(TernaryAssInstr(RightSub, None, destAssembly, srcAssembly, Imm(0)),
+                    BranchLinked(Overflow, Some(VS)))
+                }
                 case A_Len => translateMov(Offset(srcAssembly, Imm(-4)), destAssembly)
                 case A_Chr => translateMov(srcAssembly, destAssembly)
                 case A_Ord => translateMov(srcAssembly, destAssembly)

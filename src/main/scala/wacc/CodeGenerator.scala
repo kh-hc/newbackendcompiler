@@ -15,6 +15,7 @@ object CodeGenerator{
         RightSub -> "rsbs",
         Cmp -> "cmp",
         Mul -> "muls",
+        Smull -> "smull",
         And -> "and",
         Or -> "orr",
         // TODO: Update or remove to be correct
@@ -45,7 +46,7 @@ object CodeGenerator{
         PrintLn -> "_println",
         DivMod -> "__aeabi_idivmod",
         Overflow -> "_errOverflow",
-        DivZero -> "_errDivZero_str0",
+        DivZero -> "_errDivZero",
         Exit -> "exit"
     )
 
@@ -177,7 +178,7 @@ _println:
 @ length of .L._errOverflow_str0
     .word 52
 .L._errOverflow_str0:
-    .asciz "fatal error: integer overflow or underflow occurred\n"
+    .asciz "#runtime_error#\n"
 .text
 _errOverflow:
     ldr r0, =.L._errOverflow_str0
@@ -190,7 +191,7 @@ _errOverflow:
 	@ length of .L._errDivZero_str0
 		.word 40
 .L._errDivZero_str0:
-	.asciz "fatal error: division or modulo by zero\n"
+	.asciz "#runtime_error#\n"
 .text
 _errDivZero:
 	ldr r0, =.L._errDivZero_str0
