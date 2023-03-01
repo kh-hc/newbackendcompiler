@@ -29,7 +29,7 @@ object assemblyAbstractStructure {
 
     sealed trait DerefType
     case class PairAccess(pos: PairPos, pair: Value) extends Value with DerefType
-    case class ArrayAccess(pos: List[Value], array: Stored) extends Value with DerefType
+    case class ArrayAccess(pos: Value, array: Stored) extends Value with DerefType
 
     sealed trait PairPos
     case object Fst extends PairPos

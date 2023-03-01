@@ -1,5 +1,8 @@
 package wacc
 
+import parsley.internal.deepembedding.frontend.Ternary
+import scala.collection.mutable.ListBuffer
+
 class AbstractTranslator {
     import assemblyAbstractStructure._
     import SymbolTypes._
@@ -92,10 +95,14 @@ class AbstractTranslator {
             val array = getNewIntermediate
             var assignInstrs: List[Instruction] = List.empty
             for (i <- 0 to (value.length - 1)) {
-                val indexValue = ArrayAccess(List(Immediate(i)), array)
+                val indexValue = ArrayAccess(Immediate(i * 4), array)
                 assignInstrs = assignInstrs ++ translateExp(value(i), indexValue, st)
             }
-            return (array, List(UnaryOperation(A_ArrayCreate, Immediate(value.length), array)) ++ assignInstrs)
+            // Remember to store the length in the array
+            // We malloc an area of length + 1, store length in 0, then return the array address as 4
+            (array, List(UnaryOperation(A_ArrayCreate, Immediate((value.length + 1)* 4), array),
+                UnaryOperation(A_Mov, Immediate(value.length), ArrayAccess(Immediate(0), array)),
+                BinaryOperation(A_Add, array, Immediate(4), array)) ++ assignInstrs)
         }
         case NewPair(exprLeft, exprRight) => {
             val pair = getNewIntermediate
@@ -114,12 +121,12 @@ class AbstractTranslator {
                 argList = argList :+ argValue
                 argInstrs = argInstrs ++ translateExp(e, argValue, st)
             }
-            return (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
+            (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
         }
         case lvalue: Lvalue => translateLvalue(lvalue, st)
         case expr: Expr => {
             val intermediate = getNewIntermediate
-            return (intermediate, translateExp(expr, intermediate, st))
+            (intermediate, translateExp(expr, intermediate, st))
         }
     }
 
@@ -148,14 +155,22 @@ class AbstractTranslator {
     }
         case Identifier(id) => (Stored(st.lookupRecursiveID(id)), List.empty)
         case ArrayElem(id, position) => {
-            var positions: List[Value] = List.empty
-            var instructions: List[Instruction] = List.empty
+            // TODO: Refactor dereference to work like pairs
+            var access = Stored(st.lookupRecursiveID(id.id))
+            var inter = getNewIntermediate
+            var currentPos = ArrayAccess(inter, access)
+            val instructions = new ListBuffer[Instruction]
             for (pos <- position) {
-                val inter = getNewIntermediate
-                positions = positions :+ inter
-                instructions = instructions ::: translateExp(pos, inter, st) 
+                // Translate the position, then store the array access in inter
+                val posInstrs = translateExp(pos, inter, st)
+                // The position is now in intermediate, 
+                instructions.appendAll(posInstrs)
+                instructions.append(UnaryOperation(A_Mov, currentPos, inter))
+                currentPos = ArrayAccess(inter, access)
+                access = inter
+                inter = getNewIntermediate
             }
-            (ArrayAccess(positions, Stored(st.lookupRecursiveID(id.id))), instructions)
+            (currentPos, instructions.toList)
         }
     }
 

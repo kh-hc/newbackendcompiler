@@ -38,12 +38,10 @@ class AssemblyTranslator {
         case Stored(id) => allocator.getRegister(id)
         case Immediate(x) => (Nil, Imm(x))
         case ArrayAccess(pos, Stored(id)) => {
-            // val accessInstructions = List.empty[AssInstr]
             val (instrs, arrayToAccess) = allocator.getRegister(id)
-            for (p: Value <- pos) {
-                //TODO
-            }
-            return (instrs, arrayToAccess)
+            val (posInstrs, posLoc) = translateValue(pos, allocator)
+            // TODO: Multiply the offset by 4
+            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
@@ -143,7 +141,9 @@ class AssemblyTranslator {
                 case A_Len => translateMov(Offset(srcAssembly, Imm(-4)), destAssembly, allocator)
                 case A_Chr => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Ord => translateMov(srcAssembly, destAssembly, allocator)
-                case A_ArrayCreate => Nil
+                case A_ArrayCreate => {
+                    translateMov(srcAssembly, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
+                }
                 case A_Assign => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Mov => translateMov(srcAssembly, destAssembly, allocator)
             }

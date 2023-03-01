@@ -28,7 +28,7 @@ object assemblyCode {
 
     case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
-    case class Offset(reg: Operand, offset: Imm) extends Operand
+    case class Offset(reg: Operand, offset: Operand) extends Operand
 
     sealed trait Opcode
     case object Add extends Opcode
