@@ -96,7 +96,7 @@ class AssemblyTranslator {
                     val (higherRegIns, higherReg) = allocator.getFreeRegister()
                     higherRegIns ++ List(QuaternaryAssInstr(Smull, None, destAssembly, higherReg, src1Assembly, src2Assembly),
                     TernaryAssInstr(Cmp, None, higherReg, destAssembly, ASR(31)),
-                    BranchLinked(Overflow, Some(VS)))
+                    BranchLinked(Overflow, Some(NE)))
                 }
                 case A_Div => {
                     val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
@@ -303,7 +303,7 @@ class AssemblyTranslator {
                 }
             }
             case (Imm(x), _) => {
-                if (x > 255) {
+                if (x > 255 || x < -255) {
                     List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
                 } else {
                     List(BinaryAssInstr(Mov, None, dstAss, srcAss))
