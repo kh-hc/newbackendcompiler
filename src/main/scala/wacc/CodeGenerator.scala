@@ -49,6 +49,7 @@ object CodeGenerator{
         DivMod -> "__aeabi_idivmod",
         Overflow -> "_errOverflow",
         DivZero -> "_errDivZero",
+        NullError -> "_errNull",
         Exit -> "exit",
         Free -> "_freepair",
         Malloc -> "malloc"

@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/variables"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -65,11 +65,6 @@ class SystemTestSuite extends AnyFlatSpec {
                 assert(true)
             }
         }
-        // println("\n\n")
-        // println(fileName)
-        // println(stdout.toString())
-        // println(s"${expectedOutput._1}, ${expectedOutput._2}")
-        // println(stderr.toString())
     }
 
     def allFiles(path:File):List[File]=

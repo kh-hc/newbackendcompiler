@@ -58,8 +58,15 @@ class AssemblyTranslator {
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
-            return (pairInstrs, Offset(p, Imm(pos match {case Fst => 0
-            case Snd => 4})))
+            usedFunctions.addOne(ReadI)
+            usedFunctions.addOne(NullError)
+            usedFunctions.addOne(PrintS)
+            return (pairInstrs ++ 
+                    List(BinaryAssInstr(Cmp, None, p, Imm(0)), BranchLinked(NullError, Some(EQ))),
+                    Offset(p, Imm(pos match {
+                case Fst => 0
+                case Snd => 4
+            })))
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
@@ -238,13 +245,21 @@ class AssemblyTranslator {
                 srcInstr ++ translateMov(Imm(8), Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, srcOp, allocator)
             }
             case A_ReadI => {
-                usedFunctions.addOne(ReadI)
+                // usedFunctions.addOne(ReadI)
+                // usedFunctions.addOne(NullError)
+                // usedFunctions.addOne(PrintS)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
+                // BinaryAssInstr(Cmp, None, srcOp, Imm(0))
+                // BranchLinked(NullError, Some(EQ))
                 BranchLinked(ReadI, None) +: translateMov(Return, srcOp, allocator)     
             }
             case A_ReadC => {
-                usedFunctions.addOne(ReadC)
+                // usedFunctions.addOne(ReadC)
+                // usedFunctions.addOne(NullError)
+                // usedFunctions.addOne(PrintS)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
+                // BinaryAssInstr(Cmp, None, srcOp, Imm(0))
+                // BranchLinked(NullError, Some(EQ))
                 BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
             }
             case A_Return => {
