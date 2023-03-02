@@ -91,9 +91,8 @@ class AssemblyTranslator {
                 case A_Mul => {
                     usedFunctions.addOne(Overflow)
                     usedFunctions.addOne(PrintS)
-                    val (higherRegIns, higherReg) = allocator.getFreeRegister()
-                    higherRegIns ++ List(QuaternaryAssInstr(Smull, None, destAssembly, higherReg, src1Assembly, src2Assembly),
-                    TernaryAssInstr(Cmp, None, higherReg, destAssembly, ASR(31)),
+                    List(QuaternaryAssInstr(Smull, None, destAssembly, R1, src1Assembly, src2Assembly),
+                    TernaryAssInstr(Cmp, None, R1, destAssembly, ASR(31)),
                     BranchLinked(Overflow, Some(NE)))
                 }
                 case A_Div => {
