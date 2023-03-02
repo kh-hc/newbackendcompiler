@@ -11,7 +11,20 @@ class AssemblyTranslator {
     var stringsCount = 0
     var labelCount = 0
 
- def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
+    def escapeChar(c: Char): String = c match {
+        case '"'  => "\\\""
+        case '\'' => "\\\'"
+        case '\\' => "\\\\"
+        case '\n' => "\\n"
+        case '\t' => "\\t"
+        case '\b' => "\\b"
+        case '\f' => "\\f"
+        case '\r' => "\\r"
+        case _    => String.valueOf(c)
+    }
+
+
+    def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
         val main = translateMain(program.main)
         val funcs = program.functions.map(f => translateFunction(f))
         return (AssProg(List(main)), usedFunctions, funcs, stringLabelMap)
@@ -50,7 +63,7 @@ class AssemblyTranslator {
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
-            stringLabelMap.addOne(stringLabel, value)
+            stringLabelMap.addOne((stringLabel, value.flatMap(c => escapeChar(c))))
             stringsCount = stringsCount + 1
             return (Nil, Label(stringLabel))
         }
