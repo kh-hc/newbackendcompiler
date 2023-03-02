@@ -49,6 +49,7 @@ object CodeGenerator{
         DivMod -> "__aeabi_idivmod",
         Overflow -> "_errOverflow",
         DivZero -> "_errDivZero",
+        OutOfBound -> "_errOutOfBounds",
         NullError -> "_errNull",
         Exit -> "exit",
         Free -> "_freepair",
@@ -231,7 +232,21 @@ _errDivZero:
 	mov r0, #255
 	bl exit
 """,
-    Free -> """.text
+        OutOfBound -> """
+.data
+    .word 42
+.L._errOutOfBounds_str0:
+	.asciz "fatal error: array index out of bounds\n"
+.text
+_errOutOfBounds:
+    ldr r0, =.L._errOutOfBounds_str0
+    bl printf
+    mov r0, #0
+    bl fflush
+    mov r0, #255
+    bl exit
+ """,
+        Free -> """.text
 _freepair:
     push {lr}
     push {r8}

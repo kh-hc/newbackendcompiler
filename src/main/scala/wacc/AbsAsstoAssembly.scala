@@ -54,7 +54,16 @@ class AssemblyTranslator {
             val (instrs, arrayToAccess) = allocator.getRegister(id)
             val (posInstrs, posLoc) = translateValue(pos, allocator)
             // TODO: Multiply the offset by 4
-            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
+            usedFunctions.add(OutOfBound)
+            val errList = List(BinaryAssInstr(Mov, None, R2, posLoc),
+                BinaryAssInstr(Cmp, None, R2, Imm(0)),
+                BinaryAssInstr(Mov, Some(LT), R1, R2),
+                BranchLinked(OutOfBound, Some(LT)),
+                BinaryAssInstr(Ldr, None, LR, Offset(R2, Imm(-4))),
+                BinaryAssInstr(Cmp, None, R2, LR),
+                BinaryAssInstr(Mov, Some(GE), R1, R2),
+                BranchLinked(OutOfBound, Some(GE)))
+            return (instrs ++ posInstrs ++ errList, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
