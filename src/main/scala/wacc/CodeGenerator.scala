@@ -48,7 +48,7 @@ object CodeGenerator{
         ReadC -> "_readc",
         DivMod -> "__aeabi_idivmod",
         Overflow -> "_errOverflow",
-        DivZero -> "_errDivZero_str0",
+        DivZero -> "_errDivZero",
         Exit -> "exit",
         Free -> "_freepair",
         Malloc -> "malloc"

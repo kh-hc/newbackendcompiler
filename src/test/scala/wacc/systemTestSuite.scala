@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/array/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -47,15 +47,21 @@ class SystemTestSuite extends AnyFlatSpec {
         val stderr = new StringBuilder
         val logger = ProcessLogger(stdout append _ + "\n", stderr append _ + "\n")
         //val emulatorScriptCommand = 
-        val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger)
-        
-        (filePath) should "be run with our compiler and have the correct output produced" in {
+        if (!containsReadStatement(filePath)){
+            val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger) 
+            println(s"Testing: $filePath")
+            (filePath) should "be run with our compiler and have the correct output produced" in {
             if (noTestFlags.map(f => !(expectedOutput._2 contains f)).foldLeft(true)((a, b) => a & b)){  
                 assert(actualExitCode == expectedOutput._1)
                 assert(stdout.toString == expectedOutput._2)
             }
             else {
                 println(s"File: $fileName escaped processing...")
+                assert(true)
+            }
+        }
+        } else {
+            (filePath) should "work locally, it contains IO so cannot be tested" in {
                 assert(true)
             }
         }
@@ -84,12 +90,23 @@ class SystemTestSuite extends AnyFlatSpec {
     // Checks if the file contains a print or println statement
     def containsPrintStatement(file : String) : Boolean = {
         // Get the lines from the file
-        var returnVal = false
         val lines = Source.fromFile(new File(file)).getLines()
         for (line <- lines) {
-            returnVal ||= (line contains "print")
+            if (line contains "print") {
+                return true
+            }
         }
-        return returnVal
+        return false
+    }
+
+    def containsReadStatement(file: String) : Boolean = {
+        val lines = Source.fromFile(new File(file)).getLines()
+        for (line <- lines) {
+            if (line contains "read ") {
+                return true
+            }
+        }
+        return false
     }
 
     def expectedOutput(file : String) : (Int, String) = {
