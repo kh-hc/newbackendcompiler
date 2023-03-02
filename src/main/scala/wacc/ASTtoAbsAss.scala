@@ -1,7 +1,7 @@
 package wacc
 
-import parsley.internal.deepembedding.frontend.Ternary
 import scala.collection.mutable.ListBuffer
+import parsley.internal.deepembedding.backend.Unary
 
 class AbstractTranslator {
     import assemblyAbstractStructure._
@@ -154,23 +154,42 @@ class AbstractTranslator {
         }
     }
         case Identifier(id) => (Stored(st.lookupRecursiveID(id)), List.empty)
-        case ArrayElem(id, position) => {
+        case ArrayElem(id, positions) => {
             // TODO: Refactor dereference to work like pairs
-            var access = Stored(st.lookupRecursiveID(id.id))
-            var inter = getNewIntermediate
-            var currentPos = ArrayAccess(inter, access)
+            val access = Stored(st.lookupRecursiveID(id.id))
+            val oldAccess = getNewIntermediate
+            val newAccess = getNewIntermediate
+            val position = getNewIntermediate
+            val multiplier = getNewIntermediate
             val instructions = new ListBuffer[Instruction]
-            for (pos <- position) {
-                // Translate the position, then store the array access in inter
-                val posInstrs = translateExp(pos, inter, st)
-                // The position is now in intermediate, 
-                instructions.appendAll(posInstrs)
-                instructions.append(UnaryOperation(A_Mov, currentPos, inter))
-                currentPos = ArrayAccess(inter, access)
-                access = inter
-                inter = getNewIntermediate
+            instructions.append(UnaryOperation(A_Mov, Immediate(4), multiplier))
+            instructions.append(UnaryOperation(A_Mov, access, oldAccess))
+            for(pos <- positions.dropRight(1)){
+                instructions.appendAll(translateExp(pos, position, st))
+                instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
+                instructions.append(UnaryOperation(A_Mov, ArrayAccess(position, oldAccess), newAccess))
+                instructions.append(UnaryOperation(A_Mov, newAccess, oldAccess))
             }
-            (currentPos, instructions.toList)
+            instructions.appendAll(translateExp(positions.last, position, st))
+            instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
+            (ArrayAccess(position, oldAccess), instructions.toList)
+
+
+
+            // var inter = getNewIntermediate
+            // var currentPos = ArrayAccess(inter, access)
+            // val instructions = new ListBuffer[Instruction]
+            // for (pos <- position) {
+            //     // Translate the position, then store the array access in inter
+            //     val posInstrs = translateExp(pos, inter, st)
+            //     // The position is now in intermediate, 
+            //     instructions.appendAll(posInstrs)
+            //     instructions.append(UnaryOperation(A_Mov, currentPos, inter))
+            //     currentPos = ArrayAccess(inter, access)
+            //     access = inter
+            //     inter = getNewIntermediate
+            // }
+            // (currentPos, instructions.toList)
         }
     }
 

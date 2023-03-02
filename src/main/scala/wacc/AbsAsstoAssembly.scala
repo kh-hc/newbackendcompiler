@@ -255,49 +255,48 @@ class AssemblyTranslator {
 
     def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): List[AssInstr] = {
         (srcAss, dstAss) match {
-        case (Label(label), Offset(reg, offset)) => {
-            reg match {
-                case Offset(derefReg, derefOffset) => {
-                    Nil
+            case (Label(label), Offset(reg, offset)) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => {
+                        Nil
+                    }
+                    case r: Register => {
+                        val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
+                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Label(label)),
+                            BinaryAssInstr(Str, None, accessReg, Offset(r, offset)))
+                    }
+                    case _ => Nil
                 }
-                case r: Register => {
-                    val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                    accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Label(label)),
-                        BinaryAssInstr(Str, None, accessReg, Offset(r, offset)))
-                }
-                case _ => Nil
             }
-        }
-        case (Label(label), _) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
-        case (Offset(srcReg, srcOffset), Offset(dstReg, dstOffset))=> {
-            // Annoying
-            Nil
-        }
-        case (Offset(reg, offset), o) => {
-            reg match {
-                case Offset(derefReg, derefOffset) => {
-                    Nil
-                }
-                case r: Register => {
-                    val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                    accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset)),
-                        BinaryAssInstr(Mov, None, o, accessReg))
-                }
-                case _ => Nil
+            case (Label(label), _) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
+            case (Offset(srcReg, srcOffset), Offset(dstReg, dstOffset))=> {
+                // Annoying
+                Nil
             }
-        }
-        case (o, Offset(reg, offset)) => {
-            reg match {
-                case Offset(derefReg, derefOffset) => Nil
-                case r: Register => {
-                    val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                    accessInstr ++ List(BinaryAssInstr(Mov, None, accessReg, o),
-                        BinaryAssInstr(Str, None, o, Offset(reg, offset)))
+            case (Offset(reg, offset), o: Register) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => {
+                        Nil
+                    }
+                    case r: Register => {
+                        List(BinaryAssInstr(Ldr, None, o, Offset(reg, offset)))
+                            //BinaryAssInstr(Mov, None, o, accessReg))
+                    }
+                    case _ => Nil
                 }
-                case _ => Nil
             }
+            case (o, Offset(reg, offset)) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => Nil
+                    case r: Register => {
+                        val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
+                        accessInstr ++ List(BinaryAssInstr(Mov, None, accessReg, o),
+                            BinaryAssInstr(Str, None, o, Offset(reg, offset)))
+                    }
+                    case _ => Nil
+                }
+            }
+            case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
         }
-        case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
     }
-}
 }
