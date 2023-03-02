@@ -1,6 +1,7 @@
 package wacc
 
 class AbstractTranslator {
+    import scala.collection.mutable.ListBuffer
     import assemblyAbstractStructure._
     import SymbolTypes._
     import abstractSyntaxTree._
@@ -114,12 +115,12 @@ class AbstractTranslator {
                 argList = argList :+ argValue
                 argInstrs = argInstrs ++ translateExp(e, argValue, st)
             }
-            return (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
+            (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
         }
         case lvalue: Lvalue => translateLvalue(lvalue, st)
         case expr: Expr => {
             val intermediate = getNewIntermediate
-            return (intermediate, translateExp(expr, intermediate, st))
+            (intermediate, translateExp(expr, intermediate, st))
         }
     }
 

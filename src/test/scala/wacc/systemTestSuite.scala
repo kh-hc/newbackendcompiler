@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/basic/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/runtimeErr/integerOverflow"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -49,7 +49,7 @@ class SystemTestSuite extends AnyFlatSpec {
         (filePath) should "be run with our compiler and have the correct output produced" in {
             assert(actualExitCode == expectedOutput._1)
             assert(stdout.toString == expectedOutput._2)
-        }
+            }
         // println("\n\n")
         // println(fileName)
         // println(stdout.toString())
