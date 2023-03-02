@@ -28,12 +28,16 @@ object abstractSyntaxTree {
 
     case class AssignStat(t: Type, id: Identifier, value: Rvalue)(val pos: (Int, Int)) extends StatementUnit
     case class ReassignStat(left: Lvalue, right: Rvalue)(val pos: (Int, Int)) extends StatementUnit
-    case class ReadStat(value: Lvalue)(val pos: (Int, Int)) extends StatementUnit
+    
+    sealed trait ReadType {
+        var readType: Option[SymbolType] = None
+    }
+    case class ReadStat(value: Lvalue)(val pos: (Int, Int)) extends StatementUnit with ReadType
     case class FreeStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit
     case class ReturnStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit
     case class ExitStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit
 
-    sealed trait PrintType{
+    sealed trait PrintType {
         var printType: Option[SymbolType] = None
     }
     case class PrintStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit with PrintType
