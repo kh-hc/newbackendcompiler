@@ -49,7 +49,7 @@ class SystemTestSuite extends AnyFlatSpec {
         (filePath) should "be run with our compiler and have the correct output produced" in {
             assert(actualExitCode == expectedOutput._1)
             assert(stdout.toString == expectedOutput._2)
-        }
+            }
         // println("\n\n")
         // println(fileName)
         // println(stdout.toString())

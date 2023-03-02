@@ -274,7 +274,10 @@ _errDivZero:
             case BinaryAssInstr(op, cond, op1, op2) => {
                 instructionBuilder.append(opcodeMap(op) + " ")
                 instructionBuilder.append(operandToString(op1) + ", ")
-                instructionBuilder.append(operandToString(op2))
+                (op, op2) match {
+                    case (Ldr, Imm(x)) => instructionBuilder.append(s"=${operandToString(op2)}")
+                    case _ => instructionBuilder.append(operandToString(op2))
+                }
             }
             case UnaryAssInstr(op, cond, op1) => {
                 instructionBuilder.append(opcodeMap(op) + " ")
@@ -332,5 +335,6 @@ _errDivZero:
         case Label(label) => s"=$label"
         case Offset(reg, offset) => s"[${operandToString(reg)}, ${operandToString(offset)}]"
         case Imm(x) => s"#${x.toString()}"
+        case ASR(x) => s"asr #${x.toString()}"
     }
 }

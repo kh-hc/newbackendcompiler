@@ -11,7 +11,7 @@ class AssemblyTranslator {
     var stringsCount = 0
     var labelCount = 0
 
-    def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
+ def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
         val main = translateMain(program.main)
         val funcs = program.functions.map(f => translateFunction(f))
         return (AssProg(List(main)), usedFunctions, funcs, stringLabelMap)
@@ -93,7 +93,9 @@ class AssemblyTranslator {
                 case A_Mul => {
                     usedFunctions.addOne(Overflow)
                     usedFunctions.addOne(PrintS)
-                    List(TernaryAssInstr(Mul, None, destAssembly, src1Assembly, src2Assembly),
+                    val (higherRegIns, higherReg) = allocator.getFreeRegister()
+                    higherRegIns ++ List(QuaternaryAssInstr(Smull, None, destAssembly, higherReg, src1Assembly, src2Assembly),
+                    TernaryAssInstr(Cmp, None, higherReg, destAssembly, ASR(31)),
                     BranchLinked(Overflow, Some(VS)))
                 }
                 case A_Div => {
@@ -113,6 +115,8 @@ class AssemblyTranslator {
                     usedFunctions.addOne(PrintS)
                     saveRegs ++ List(BinaryAssInstr(Mov, None, Return, src1Assembly),
                     BinaryAssInstr(Mov, None, R1, src2Assembly),
+                    BinaryAssInstr(Cmp, None, R1, Imm(0)),
+                    BranchLinked(DivZero, Some(EQ)),
                     BranchLinked(DivMod, None),
                     BinaryAssInstr(Mov, None, destAssembly, R1)) ++ restoreRegs
                 }
@@ -254,9 +258,58 @@ class AssemblyTranslator {
 
     def generateStringLabel(counter: Int): String = s".L.str${counter.toString}"
 
-    def translateMov(srcAss: Operand, dstAss: Operand): List[AssInstr] = srcAss match {
-        case Label(label) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
-        case Offset(reg, offset) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
-        case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
+    def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): List[AssInstr] = {
+        (srcAss, dstAss) match {
+            case (Label(label), Offset(reg, offset)) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => {
+                        Nil
+                    }
+                    case r: Register => {
+                        val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
+                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Label(label)),
+                            BinaryAssInstr(Str, None, accessReg, Offset(r, offset)))
+                    }
+                    case _ => Nil
+                }
+            }
+            case (Label(label), _) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
+            case (Offset(srcReg, srcOffset), Offset(dstReg, dstOffset))=> {
+                // Annoying
+                Nil
+            }
+            case (Offset(reg, offset), o) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => {
+                        Nil
+                    }
+                    case r: Register => {
+                        val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
+                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset)),
+                            BinaryAssInstr(Mov, None, o, accessReg))
+                    }
+                    case _ => Nil
+                }
+            }
+            case (o, Offset(reg, offset)) => {
+                reg match {
+                    case Offset(derefReg, derefOffset) => Nil
+                    case r: Register => {
+                        val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
+                        accessInstr ++ List(BinaryAssInstr(Mov, None, accessReg, o),
+                            BinaryAssInstr(Str, None, o, Offset(reg, offset)))
+                    }
+                    case _ => Nil
+                }
+            }
+            case (Imm(x), _) => {
+                if (x > 255) {
+                    List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
+                } else {
+                    List(BinaryAssInstr(Mov, None, dstAss, srcAss))
+                }
+            }
+            case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
+        }
     }
 }

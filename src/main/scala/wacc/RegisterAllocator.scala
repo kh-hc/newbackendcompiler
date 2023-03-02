@@ -17,6 +17,7 @@ class RegisterAllocator() {
     availableRegisters.pushAll(generalRegisters)
     val usedRegisters = Queue[Register]()
     val usedEverRegisters = Set[Register]()
+    val newThisScope = Set[Register]()
 
     // Note that this is heavily unoptimized
     def getRegister(name: String): (List[AssInstr], Register) = storage.get(name) match{
@@ -53,7 +54,7 @@ class RegisterAllocator() {
         }
     }
 
-    private def getFreeRegister(): (List[AssInstr], Register) = {
+    def getFreeRegister(): (List[AssInstr], Register) = {
         val freeingInstructions = new ListBuffer[AssInstr]
         if (availableRegisters.isEmpty) {
             // If there are no available registers, store a value on the stack
@@ -77,6 +78,7 @@ class RegisterAllocator() {
             availableRegisters.push(registerToFree)
         }
         val reg = availableRegisters.pop()
+        newThisScope.add(reg)
         usedEverRegisters.add(reg)
         usedRegisters.enqueue(reg)
         return (freeingInstructions.toList, reg)
@@ -106,6 +108,10 @@ class RegisterAllocator() {
         retrievalInstrs.toList
     }
 
+    def newScope() = {
+        newThisScope.clear()
+    }
+
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
         pushInstr.append(UnaryAssInstr(Push, None, LR))
@@ -123,8 +129,26 @@ class RegisterAllocator() {
         if (stackSize > 0) {
             revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
         }
+        //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))
+        return (pushInstr.toList, revPop.toList)
+    }
+
+    def generateScopeBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
+        val pushInstr = ListBuffer[AssInstr]()
+        if (stackSize > 0) {
+            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
+        }
+        val popInstr = ListBuffer[AssInstr]()
+        for (reg <- newThisScope) {
+            pushInstr.append(UnaryAssInstr(Push, None, reg))
+            popInstr.append(UnaryAssInstr(Pop, None, reg))
+        }
+        val revPop = popInstr.reverse
+        if (stackSize > 0) {
+            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
+        }
         return (pushInstr.toList, revPop.toList)
     }
 
