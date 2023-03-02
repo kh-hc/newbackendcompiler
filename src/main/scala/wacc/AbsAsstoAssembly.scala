@@ -11,19 +11,7 @@ class AssemblyTranslator {
     var stringsCount = 0
     var labelCount = 0
 
-    def escapedChar(ch: Char): String = ch match {
-        case '"'  => "\\\""
-        case '\'' => "\\\'"
-        case '\\' => "\\\\"
-        case '\b' => "\\b"
-        case '\n' => "\\n"
-        case '\f' => "\\f"
-        case '\r' => "\\r"
-        case '\t' => "\\t"
-        case _    => String.valueOf(ch)
-    }
-
-    def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
+ def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
         val main = translateMain(program.main)
         val funcs = program.functions.map(f => translateFunction(f))
         return (AssProg(List(main)), usedFunctions, funcs, stringLabelMap)
@@ -46,16 +34,14 @@ class AssemblyTranslator {
     }
 
     // TODO: Deal with arrays, pairs and strings properly
-    def translateValue(value: Value, allocator: RegisterAllocator): (List[AssInstr], Operand, List[AssInstr]) = value match {
+    def translateValue(value: Value, allocator: RegisterAllocator): (List[AssInstr], Operand) = value match {
         case Stored(id) => allocator.getRegister(id)
-        case Immediate(x) => (Nil, Imm(x), Nil)
+        case Immediate(x) => (Nil, Imm(x))
         case ArrayAccess(pos, Stored(id)) => {
-            // val accessInstructions = List.empty[AssInstr]
-            val (instrs, arrayToAccess, revInstr) = allocator.getRegister(id)
-            for (p: Value <- pos) {
-                //TODO
-            }
-            return (instrs, arrayToAccess, revInstr)
+            val (instrs, arrayToAccess) = allocator.getRegister(id)
+            val (posInstrs, posLoc) = translateValue(pos, allocator)
+            // TODO: Multiply the offset by 4
+            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
@@ -64,32 +50,30 @@ class AssemblyTranslator {
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
-            stringLabelMap.addOne((stringLabel, value.flatMap(c => escapedChar(c))))
+            stringLabelMap.addOne(stringLabel, value)
             stringsCount = stringsCount + 1
-            return (Nil, Label(stringLabel), Nil)
+            return (Nil, Label(stringLabel))
         }
         
-        case Null => return (Nil, Imm(0), Nil)
+        case Null => return (Nil, Imm(0))
     }
 
     def translateInstruction(instruction: Instruction, allocator: RegisterAllocator): List[AssInstr] = instruction match{
         case BinaryOperation(op, src1, src2, dst) => {
-            var (src1Instr, src1Assembly, revInstr1) = translateValue(src1, allocator)
-            var (src2Instr, src2Assembly, revInstr2) = translateValue(src2, allocator)
-            var revInstr: List[AssInstr] = revInstr1 ++ revInstr2
+            var (src1Instr, src1Assembly) = translateValue(src1, allocator)
+            var (src2Instr, src2Assembly) = translateValue(src2, allocator)
             src1Assembly match {
                 case r: Register => 
                 case _: Any => {
-                    val (instr, newReg, revInst) = allocator.getNewAccessRegister(src2Assembly match {
+                    val (instr, newReg) = allocator.getNewAccessRegister(src2Assembly match {
                         case r: Register => r
                         case _ => Return
                     })
-                    src1Instr = src1Instr ++ instr ++ translateMov(src1Assembly, newReg)
-                    src1Assembly = newReg   
-                    revInstr = revInstr ++ revInst             
+                    src1Instr = src1Instr ++ instr ++ translateMov(src1Assembly, newReg, allocator)
+                    src1Assembly = newReg                
                 }
             }
-            var (destInstr, destAssembly, revInstrD) = translateValue(dst, allocator)
+            val (destInstr, destAssembly) = translateValue(dst, allocator)
             val finalInstr: List[AssInstr] = op match {
                 case A_Add => {
                     usedFunctions.addOne(Overflow)
@@ -145,19 +129,17 @@ class AssemblyTranslator {
             return src1Instr ++ src2Instr ++ destInstr ++ finalInstr
         }
         case UnaryOperation(op, src, dst) => {
-            var (srcInstr, srcAssembly, revInstrSRC) = translateValue(src, allocator)
-            val (destInstr, destAssembly, revInstrDST) = translateValue(dst, allocator)
-            var reversInstr: List[AssInstr] = Nil
+            var (srcInstr, srcAssembly) = translateValue(src, allocator)
+            val (destInstr, destAssembly) = translateValue(dst, allocator)
             srcAssembly match {
                 case r: Register => 
                 case _: Any => {
-                    val (instr, newReg, revInstr) = allocator.getNewAccessRegister(destAssembly match {
+                    val (instr, newReg) = allocator.getNewAccessRegister(destAssembly match {
                         case r: Register => r
                         case _: Any => Return
                     })
-                    srcInstr = srcInstr ++ instr ++ translateMov(srcAssembly, newReg)
-                    srcAssembly = newReg   
-                    reversInstr = revInstrSRC ++ revInstrDST ++ revInstr             
+                    srcInstr = srcInstr ++ instr ++ translateMov(srcAssembly, newReg, allocator)
+                    srcAssembly = newReg                
                 }
             }
             val finalInstrs = op match {
@@ -180,31 +162,31 @@ class AssemblyTranslator {
         case InbuiltFunction(op, src) => op match {
             case A_PrintI => {
                 usedFunctions.addOne(PrintI)
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(PrintI, None)
             }
             case A_PrintB => {
                 usedFunctions.addOne(PrintB)
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(PrintB, None)
             }
             case A_PrintC => {
                 usedFunctions.addOne(PrintC)
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(PrintC, None)
             }
             case A_PrintS => {
                 usedFunctions.addOne(PrintS)
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+ BranchLinked(PrintS, None)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchLinked(PrintS, None)
             }
             case A_PrintA => {
                 usedFunctions.addOne(PrintA)
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(PrintA, None)
             }
             case A_Println => {
@@ -213,7 +195,7 @@ class AssemblyTranslator {
             }
             case A_ArrayCreate => Nil
             case A_Exit => {   
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
                 val exitCode: Operand = srcOp match {
                     case Imm(x) => {
                         if (x == -1) {
@@ -228,8 +210,11 @@ class AssemblyTranslator {
                 BranchLinked(Exit, None)
             }
             case A_Free => {    
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                usedFunctions.addOne(Free)
+                usedFunctions.addOne(NullError)
+                usedFunctions.addOne(PrintS)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(Free, None)
             }
             case A_Len => Nil
@@ -250,15 +235,15 @@ class AssemblyTranslator {
                 BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
             }
             case A_Return => {
-                val (srcInstr, srcOp, rev) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return) :+ BranchUnconditional("0f")
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchUnconditional("0f")
             }
         }
         case FunctionCall(name, args, dst) => {
             var instr: List[AssInstr] = Nil
             var count = 0
             for (arg <- args) {
-                val (argInstr, argOp, rev) = translateValue(arg, allocator)
+                val (argInstr, argOp) = translateValue(arg, allocator)
                 if (count < 4) {
                     val reg = argumentRegisters(count)
                     instr = instr ++ (argInstr ++ translateMov(argOp, reg, allocator))
@@ -267,12 +252,12 @@ class AssemblyTranslator {
                 }
                 count = count + 1
             }
-            val (dstInstr, dstOp, rev) = translateValue(dst, allocator)
-            instr ++ (CallFunction(name) +: dstInstr) ++ translateMov(Return, dstOp)
+            val (dstInstr, dstOp) = translateValue(dst, allocator)
+            instr ++ (CallFunction(name) +: dstInstr) ++ translateMov(Return, dstOp, allocator)
         }
         case IfInstruction(condition, ifInstructions, elseInstructions) => {
             val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val (assInstr, assOp, rev) = translateValue(condition.value, allocator)
+            val (assInstr, assOp) = translateValue(condition.value, allocator)
             val elseLabel = generateLabel(labelCount)
             labelCount = labelCount + 1
             val endLabel = generateLabel(labelCount)
@@ -280,20 +265,7 @@ class AssemblyTranslator {
             conditionalInstr ++ assInstr ++ (BinaryAssInstr(Cmp, None, assOp, Imm(1)) +: BranchNe(elseLabel) +: ifInstructions.map(i => translateInstruction(i, allocator)).flatten :+ BranchUnconditional(endLabel)) ++ 
             (NewLabel(elseLabel) +: elseInstructions.map(i => translateInstruction(i, allocator)).flatten :+ NewLabel(endLabel))
         }
-        case WhileInstruction(condition, body) => {
-            //println(condition.conditions)
-            val (assInstr, assOp, rev) = translateValue(condition.value, allocator)
-            val condInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val condLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            val endLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            val bodyInstr = body.map(i => translateInstruction(i, allocator)).flatten
-
-            println(s"cond instruction: $condInstr,\n bodyInstr: $bodyInstr,\n ass intruction: $assInstr,\n ass op: $assOp")
-
-            (assInstr ++ (NewLabel(condLabel) +: condInstr) ++ (assInstr :+ BinaryAssInstr(Cmp, None, assOp, Imm(1)) :+ BranchNe(endLabel)) ++ bodyInstr ++ List(BranchUnconditional(condLabel), NewLabel(endLabel)))
-        }
+        case WhileInstruction(condition, body) => Nil
     }
 
     def generateLabel(counter: Int): String = s".L${counter.toString}"
