@@ -20,27 +20,27 @@ class RegisterAllocator() {
     val newThisScope = Set[Register]()
 
     // Note that this is heavily unoptimized
-    def getRegister(name: String): (List[AssInstr], Register, List[AssInstr]) = storage.get(name) match{
+    def getRegister(name: String): (List[AssInstr], Register) = storage.get(name) match{
         case Some(s) => s match {
             case Reg(r) => {
-                return (Nil, r, Nil)
+                return (Nil, r)
             }
             case Stored(offset) => {
-                val (instructions, register, revInst) = getFreeRegister()
+                val (instructions, register) = getFreeRegister()
                 store(name, register)
-                return (instructions :+ BinaryAssInstr(Ldr, None, register, Offset(FP, Imm(-(4 * offset)))), register, revInst)
+                return (instructions :+ BinaryAssInstr(Ldr, None, register, Offset(FP, Imm(-(4 * offset)))), register)
             }
         }
         case None => {
-            val (instructions, register, revInst) = getFreeRegister()
+            val (instructions, register) = getFreeRegister()
             store(name, register)
-            return (instructions, register, revInst)
+            return (instructions, register)
         }
     }
 
     // Gets registers for nested array/pair accesses
     // Assumes that there are more than two registers available
-    def getNewAccessRegister(accessLocation: Register): (List[AssInstr], Register, List[AssInstr]) = {
+    def getNewAccessRegister(accessLocation: Register): (List[AssInstr], Register) = {
         if (availableRegisters.isEmpty) {
             if (usedRegisters.front != accessLocation){
                 return getFreeRegister()
@@ -54,12 +54,11 @@ class RegisterAllocator() {
         }
     }
 
-    private def getFreeRegister(): (List[AssInstr], Register, List[AssInstr]) = {
+    private def getFreeRegister(): (List[AssInstr], Register) = {
         val freeingInstructions = new ListBuffer[AssInstr]
-        val reversingInstr = new ListBuffer[AssInstr]
         if (availableRegisters.isEmpty) {
             // If there are no available registers, store a value on the stack
-            val registerToFree: Register = usedRegisters.dequeue()
+            val registerToFree = usedRegisters.dequeue()
             if (registerMap.contains(registerToFree)) {
                 val variableToStore = registerMap.get(registerToFree)
                 registerMap.remove(registerToFree)
@@ -73,8 +72,6 @@ class RegisterAllocator() {
                         freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
                         stackMap(variableToStore.get) = Stored(stackSize)
                         storage(variableToStore.get) = Stored(stackSize)
-                        println("we storing you bitch")
-                        reversingInstr += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
                     }
                 }
             }
@@ -84,7 +81,7 @@ class RegisterAllocator() {
         newThisScope.add(reg)
         usedEverRegisters.add(reg)
         usedRegisters.enqueue(reg)
-        return (freeingInstructions.toList, reg, reversingInstr.toList)
+        return (freeingInstructions.toList, reg)
     }
 
     private def store(name: String, register: Register) = {
@@ -100,7 +97,7 @@ class RegisterAllocator() {
         for (arg <- args) {
                 if (count < 4) {
                     val reg = argumentRegisters(count)
-                    val (instrs, newReg, revInst) = getRegister(arg)
+                    val (instrs, newReg) = getRegister(arg)
                     retrievalInstrs.addAll(instrs)
                     retrievalInstrs += BinaryAssInstr(Mov, None, newReg, reg)
                 } else {
