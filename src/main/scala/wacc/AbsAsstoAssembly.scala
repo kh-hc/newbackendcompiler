@@ -242,14 +242,12 @@ class AssemblyTranslator {
             case A_ReadI => {
                 usedFunctions.addOne(ReadI)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(ReadI, None)
+                BranchLinked(ReadI, None) +: translateMov(Return, srcOp, allocator)     
             }
             case A_ReadC => {
                 usedFunctions.addOne(ReadC)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(ReadC, None)
+                BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
             }
             case A_Return => {
                 val (srcInstr, srcOp, rev) = translateValue(src, allocator)
