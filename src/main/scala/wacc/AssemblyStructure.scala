@@ -27,8 +27,9 @@ object assemblyAbstractStructure {
     case class StringLiteral(value: String) extends Value
     case object Null extends Value
 
-    case class PairAccess(pos: PairPos, pair: Value) extends Value
-    case class ArrayAccess(pos: List[Value], array: Stored) extends Value
+    sealed trait DerefType
+    case class PairAccess(pos: PairPos, pair: Value) extends Value with DerefType
+    case class ArrayAccess(pos: Value, array: Stored) extends Value with DerefType
 
     sealed trait PairPos
     case object Fst extends PairPos

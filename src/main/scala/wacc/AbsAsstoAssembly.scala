@@ -38,17 +38,15 @@ class AssemblyTranslator {
         case Stored(id) => allocator.getRegister(id)
         case Immediate(x) => (Nil, Imm(x))
         case ArrayAccess(pos, Stored(id)) => {
-            // val accessInstructions = List.empty[AssInstr]
             val (instrs, arrayToAccess) = allocator.getRegister(id)
-            for (p: Value <- pos) {
-                //TODO
-            }
-            return (instrs, arrayToAccess)
+            val (posInstrs, posLoc) = translateValue(pos, allocator)
+            // TODO: Multiply the offset by 4
+            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
-            //val accessInstructions = List.empty[AssInstr]
-            // TODO
-            return translateValue(pair, allocator)
+            val (pairInstrs, p) = translateValue(pair, allocator)
+            return (pairInstrs, Offset(p, Imm(pos match {case Fst => 0
+            case Snd => 4})))
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
@@ -156,7 +154,7 @@ class AssemblyTranslator {
                 case A_Len => translateMov(Offset(srcAssembly, Imm(-4)), destAssembly, allocator)
                 case A_Chr => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Ord => translateMov(srcAssembly, destAssembly, allocator)
-                case A_ArrayCreate => Nil
+                case A_ArrayCreate => translateMov(srcAssembly, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
                 case A_Assign => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Mov => translateMov(srcAssembly, destAssembly, allocator)
             }
@@ -214,10 +212,25 @@ class AssemblyTranslator {
             }
             case A_Free => {    
                 val (srcInstr, srcOp) = translateValue(src, allocator)
+<<<<<<< src/main/scala/wacc/AbsAsstoAssembly.scala
+                usedFunctions.addOne(Free)
+                usedFunctions.addOne(NullError)
+                usedFunctions.addOne(PrintS)
+=======
+>>>>>>> src/main/scala/wacc/AbsAsstoAssembly.scala
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(Free, None)
             }
             case A_Len => Nil
+<<<<<<< src/main/scala/wacc/AbsAsstoAssembly.scala
+            case A_PairCreate => {
+                // Call malloc on size 8
+                //mov the address accordingly
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(Imm(8), Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, srcOp, allocator)
+            }
+            case A_Read => Nil
+=======
             case A_PairCreate => Nil
             case A_ReadI => {
                 usedFunctions.addOne(ReadI)
@@ -231,6 +244,7 @@ class AssemblyTranslator {
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(ReadC, None)
             }
+>>>>>>> src/main/scala/wacc/AbsAsstoAssembly.scala
             case A_Return => {
                 val (srcInstr, srcOp) = translateValue(src, allocator)
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchUnconditional("0f")
@@ -289,15 +303,24 @@ class AssemblyTranslator {
                 // Annoying
                 Nil
             }
+<<<<<<< src/main/scala/wacc/AbsAsstoAssembly.scala
+            case (Offset(reg, offset), o: Register) => {
+=======
             case (Offset(reg, offset), o) => {
+>>>>>>> src/main/scala/wacc/AbsAsstoAssembly.scala
                 reg match {
                     case Offset(derefReg, derefOffset) => {
                         Nil
                     }
                     case r: Register => {
+<<<<<<< src/main/scala/wacc/AbsAsstoAssembly.scala
+                        List(BinaryAssInstr(Ldr, None, o, Offset(reg, offset)))
+                            //BinaryAssInstr(Mov, None, o, accessReg))
+=======
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
                         accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset)),
                             BinaryAssInstr(Mov, None, o, accessReg))
+>>>>>>> src/main/scala/wacc/AbsAsstoAssembly.scala
                     }
                     case _ => Nil
                 }
@@ -313,6 +336,8 @@ class AssemblyTranslator {
                     case _ => Nil
                 }
             }
+<<<<<<< src/main/scala/wacc/AbsAsstoAssembly.scala
+=======
             case (Imm(x), _) => {
                 if (x > 255 || x < -255) {
                     List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
@@ -320,6 +345,7 @@ class AssemblyTranslator {
                     List(BinaryAssInstr(Mov, None, dstAss, srcAss))
                 }
             }
+>>>>>>> src/main/scala/wacc/AbsAsstoAssembly.scala
             case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
         }
     }

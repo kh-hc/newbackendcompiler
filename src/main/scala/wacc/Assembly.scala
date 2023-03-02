@@ -69,6 +69,8 @@ object assemblyCode {
     case object Exit extends InBuilt
     case object Free extends InBuilt
     case object Overflow extends InBuilt
+    case object NullError extends InBuilt
+    case object Malloc extends InBuilt
     
     sealed trait AssInstr
     // General convention being dest src src1 ...
