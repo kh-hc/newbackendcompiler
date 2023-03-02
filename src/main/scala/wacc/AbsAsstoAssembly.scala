@@ -11,7 +11,20 @@ class AssemblyTranslator {
     var stringsCount = 0
     var labelCount = 0
 
- def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
+    def escapeChar(c: Char): String = c match {
+        case '"'  => "\\\""
+        case '\'' => "\\\'"
+        case '\\' => "\\\\"
+        case '\n' => "\\n"
+        case '\t' => "\\t"
+        case '\b' => "\\b"
+        case '\f' => "\\f"
+        case '\r' => "\\r"
+        case _    => String.valueOf(c)
+    }
+
+
+    def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[String, String]) = {
         val main = translateMain(program.main)
         val funcs = program.functions.map(f => translateFunction(f))
         return (AssProg(List(main)), usedFunctions, funcs, stringLabelMap)
@@ -38,21 +51,19 @@ class AssemblyTranslator {
         case Stored(id) => allocator.getRegister(id)
         case Immediate(x) => (Nil, Imm(x))
         case ArrayAccess(pos, Stored(id)) => {
-            // val accessInstructions = List.empty[AssInstr]
             val (instrs, arrayToAccess) = allocator.getRegister(id)
-            for (p: Value <- pos) {
-                //TODO
-            }
-            return (instrs, arrayToAccess)
+            val (posInstrs, posLoc) = translateValue(pos, allocator)
+            // TODO: Multiply the offset by 4
+            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
-            //val accessInstructions = List.empty[AssInstr]
-            // TODO
-            return translateValue(pair, allocator)
+            val (pairInstrs, p) = translateValue(pair, allocator)
+            return (pairInstrs, Offset(p, Imm(pos match {case Fst => 0
+            case Snd => 4})))
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
-            stringLabelMap.addOne(stringLabel, value)
+            stringLabelMap.addOne((stringLabel, value.flatMap(c => escapeChar(c))))
             stringsCount = stringsCount + 1
             return (Nil, Label(stringLabel))
         }
@@ -93,9 +104,8 @@ class AssemblyTranslator {
                 case A_Mul => {
                     usedFunctions.addOne(Overflow)
                     usedFunctions.addOne(PrintS)
-                    val (higherRegIns, higherReg) = allocator.getFreeRegister()
-                    higherRegIns ++ List(QuaternaryAssInstr(Smull, None, destAssembly, higherReg, src1Assembly, src2Assembly),
-                    TernaryAssInstr(Cmp, None, higherReg, destAssembly, ASR(31)),
+                    List(QuaternaryAssInstr(Smull, None, destAssembly, R1, src1Assembly, src2Assembly),
+                    TernaryAssInstr(Cmp, None, R1, destAssembly, ASR(31)),
                     BranchLinked(Overflow, Some(NE)))
                 }
                 case A_Div => {
@@ -156,7 +166,7 @@ class AssemblyTranslator {
                 case A_Len => translateMov(Offset(srcAssembly, Imm(-4)), destAssembly, allocator)
                 case A_Chr => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Ord => translateMov(srcAssembly, destAssembly, allocator)
-                case A_ArrayCreate => Nil
+                case A_ArrayCreate => translateMov(srcAssembly, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
                 case A_Assign => translateMov(srcAssembly, destAssembly, allocator)
                 case A_Mov => translateMov(srcAssembly, destAssembly, allocator)
             }
@@ -214,12 +224,29 @@ class AssemblyTranslator {
             }
             case A_Free => {    
                 val (srcInstr, srcOp) = translateValue(src, allocator)
+                usedFunctions.addOne(Free)
+                usedFunctions.addOne(NullError)
+                usedFunctions.addOne(PrintS)
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(Free, None)
             }
             case A_Len => Nil
-            case A_PairCreate => Nil
-            case A_Read => Nil
+            case A_PairCreate => {
+                // Call malloc on size 8
+                //mov the address accordingly
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(Imm(8), Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, srcOp, allocator)
+            }
+            case A_ReadI => {
+                usedFunctions.addOne(ReadI)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                BranchLinked(ReadI, None) +: translateMov(Return, srcOp, allocator)     
+            }
+            case A_ReadC => {
+                usedFunctions.addOne(ReadC)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
+            }
             case A_Return => {
                 val (srcInstr, srcOp) = translateValue(src, allocator)
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchUnconditional("0f")

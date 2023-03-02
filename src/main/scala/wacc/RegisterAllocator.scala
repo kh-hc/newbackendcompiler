@@ -54,7 +54,7 @@ class RegisterAllocator() {
         }
     }
 
-    def getFreeRegister(): (List[AssInstr], Register) = {
+    private def getFreeRegister(): (List[AssInstr], Register) = {
         val freeingInstructions = new ListBuffer[AssInstr]
         if (availableRegisters.isEmpty) {
             // If there are no available registers, store a value on the stack

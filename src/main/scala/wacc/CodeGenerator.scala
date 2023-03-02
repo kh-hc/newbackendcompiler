@@ -44,10 +44,14 @@ object CodeGenerator{
         PrintS -> "_prints",
         PrintA -> "_printp",
         PrintLn -> "_println",
+        ReadI -> "_readi",
+        ReadC -> "_readc",
         DivMod -> "__aeabi_idivmod",
         Overflow -> "_errOverflow",
         DivZero -> "_errDivZero",
-        Exit -> "exit"
+        Exit -> "exit",
+        Free -> "_freepair",
+        Malloc -> "malloc"
     )
 
     val registerMap = Map[Register, String](
@@ -173,6 +177,34 @@ _println:
 	bl fflush
     pop {r1}
 	pop {pc}""",
+        ReadC -> """.data
+	.word 3
+.L._readc_str0:
+	.asciz " %c"
+.text
+_readc:
+	push {lr}
+	strb r0, [sp, #-1]!
+	mov r1, sp
+	ldr r0, =.L._readc_str0
+	bl scanf
+	ldrsb r0, [sp, #0]
+	add sp, sp, #1
+	pop {pc}""",
+        ReadI -> """.data
+	.word 2
+.L._readi_str0:
+	.asciz "%d"
+.text
+_readi:
+    push {lr}
+    str r0, [sp, #-4]!
+    mov r1, sp
+    ldr r0, =.L._readi_str0
+    bl scanf
+    ldr r0, [sp, #0]
+	add sp, sp, #4
+	pop {pc}""",
         Overflow -> """
 .data
 @ length of .L._errOverflow_str0
@@ -184,8 +216,7 @@ _errOverflow:
     ldr r0, =.L._errOverflow_str0
     bl _prints
     mov r0, #255
-    bl exit
-""",
+    bl exit""",
         DivZero -> """
 .data
 	@ length of .L._errDivZero_str0
@@ -198,7 +229,30 @@ _errDivZero:
 	bl _prints
 	mov r0, #255
 	bl exit
-""")
+""",
+    Free -> """.text
+_freepair:
+    push {lr}
+    push {r8}
+    mov r8, r0
+    cmp r8, #0
+    bleq _errNull
+    mov r0, r8
+    bl free
+    pop {r8}
+    pop {pc}
+""",
+    NullError -> """.data
+    .word 45
+.L._errNull_str0:
+	.asciz "fatal error: null pair dereferenced or freed\n"
+.text
+_errNull:
+    ldr r0, =.L._errNull_str0
+    bl _prints
+    mov r0, #255
+    bl exit
+    """)
     
     def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
         val outputFile = new File(newFileName(waccName))
