@@ -65,7 +65,8 @@ object assemblyAbstractStructure {
     case object A_PrintA extends AssemblyIOperator
     case object A_Println extends AssemblyIOperator
     case object A_Assign extends AssemblyUOperator
-    case object A_Read extends AssemblyIOperator
+    case object A_ReadI extends AssemblyIOperator
+    case object A_ReadC extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
     case object A_Exit extends AssemblyIOperator
