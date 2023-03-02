@@ -36,9 +36,12 @@ class AbstractTranslator {
             val (rightIntermediate, instrR) = translateRvalue(right, stat.symbolTable.get)
             return instrL ++ instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, leftIntermediate))
         }
-        case ReadStat(value) => {
-            val (dest, instr) = translateLvalue(value, stat.symbolTable.get)
-            return instr ++ List(InbuiltFunction(A_Read, dest))
+        case r: ReadStat => {
+            val (dest, instr) = translateLvalue(r.value, stat.symbolTable.get)
+            return instr  :+  (r.readType.get match {
+                case IntSymbol => InbuiltFunction(A_ReadI, dest)
+                case CharSymbol => InbuiltFunction(A_ReadC, dest)
+            })
         }
         case FreeStat(expr) => {
             val intermediate = getNewIntermediate

@@ -219,7 +219,18 @@ class AssemblyTranslator {
             }
             case A_Len => Nil
             case A_PairCreate => Nil
-            case A_Read => Nil
+            case A_ReadI => {
+                usedFunctions.addOne(ReadI)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
+                BranchLinked(ReadI, None)
+            }
+            case A_ReadC => {
+                usedFunctions.addOne(ReadC)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
+                BranchLinked(ReadC, None)
+            }
             case A_Return => {
                 val (srcInstr, srcOp) = translateValue(src, allocator)
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchUnconditional("0f")
