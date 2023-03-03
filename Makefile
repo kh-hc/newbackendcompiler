@@ -3,7 +3,7 @@ all:
 
 clean:
 	sbt clean && rm -rf wacc-46-compiler.jar
-	rm *.o 
 	rm *.s
+	rm *.o
 
 .PHONY: all clean

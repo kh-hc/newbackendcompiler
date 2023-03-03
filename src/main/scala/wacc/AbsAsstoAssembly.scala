@@ -59,7 +59,9 @@ class AssemblyTranslator {
                 BinaryAssInstr(Cmp, None, R2, Imm(0)),
                 BinaryAssInstr(Mov, Some(LT), R1, R2),
                 BranchLinked(OutOfBound, Some(LT)),
-                BinaryAssInstr(Ldr, None, LR, Offset(R2, Imm(-4))),
+                BinaryAssInstr(Ldr, None, LR, Offset(arrayToAccess, Imm(-4))),
+                BinaryAssInstr(Mov, None, Return, Imm(4)),
+                TernaryAssInstr(Mul, None, LR, LR, Return),
                 BinaryAssInstr(Cmp, None, R2, LR),
                 BinaryAssInstr(Mov, Some(GE), R1, R2),
                 BranchLinked(OutOfBound, Some(GE)))

@@ -236,7 +236,7 @@ _errDivZero:
 .data
     .word 42
 .L._errOutOfBounds_str0:
-	.asciz "fatal error: array index out of bounds\n"
+	.asciz "fatal error: array index %d out of bounds\n"
 .text
 _errOutOfBounds:
     ldr r0, =.L._errOutOfBounds_str0
