@@ -30,7 +30,6 @@ class AssemblyTranslator {
     def translateFunction(function: Function): Block = {
         val allocator = new RegisterAllocator()
         val retrieveArgs = allocator.loadArgs(function.args.map(p => p.id))
-        //TODO link arguments to their registers in the allocator
         val assembly = new ListBuffer[AssInstr]
         function.body.foreach(i => assembly.appendAll(translateInstruction(i, allocator)))
         val (prefix, suffix) = allocator.generateBoilerPlate()
@@ -87,9 +86,12 @@ class AssemblyTranslator {
         case Null => return (Nil, Imm(0))
     }
 
-    def translateValueInto(value: Value, allocator: RegisterAllocator, destination: Register): List[AssInstr] = {
+    def translateValueInto(value: Value, allocator: RegisterAllocator, destination: Register): ListBuffer[AssInstr] = {
         val (origInstr, origOperand) = translateValue(value, allocator)
-        origInstr ++ translateMov(origOperand, destination, allocator)
+        val instructions = new ListBuffer[AssInstr]
+        instructions.appendAll(translateMov(origOperand, destination, allocator))
+        instructions.appendAll(origInstr)
+        instructions
     }
 
     def escapedChar(ch: Char): String = ch match {
@@ -105,286 +107,309 @@ class AssemblyTranslator {
     }
 
 
-    def translateInstruction(instruction: Instruction, allocator: RegisterAllocator): List[AssInstr] = instruction match{
-        case BinaryOperation(op, src1, src2, dst) => {
-            val src1Instr = translateValueInto(src1, allocator, R1)
-            val src2Instr = translateValueInto(src2, allocator, R2)
-            val (destInstr, destAssembly) = translateValue(dst, allocator)
-            val finalInstr: List[AssInstr] = op match {
-                case A_Add => {
-                    usedFunctions.addOne(Overflow)
-                    usedFunctions.addOne(PrintS)
-                    List(
-                    TernaryAssInstr(Add, None, destAssembly, R1, R2),
-                    BranchLinked(Overflow, Some(VS)))
-                }
-                case A_Sub => {
-                    usedFunctions.addOne(Overflow)
-                    usedFunctions.addOne(PrintS)
-                    List(TernaryAssInstr(Sub, None, destAssembly, R1, R2),
-                    BranchLinked(Overflow, Some(VS)))
-                }
-                case A_Mul => {
-                    usedFunctions.addOne(Overflow)
-                    usedFunctions.addOne(PrintS)
-                    List(QuaternaryAssInstr(Smull, None, destAssembly, R3, R1, R2),
-                    TernaryAssInstr(Cmp, None, R3, destAssembly, ASR(31)),
-                    BranchLinked(Overflow, Some(NE)))
-                }
-                case A_Div => {
-                    val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
-                    usedFunctions.addOne(DivZero)
-                    usedFunctions.addOne(PrintS)
-                    saveRegs ++ List(BinaryAssInstr(Mov, None, Return, R1),
-                    BinaryAssInstr(Mov, None, R1, R2),
-                    BinaryAssInstr(Cmp, None, R1, Imm(0)),
-                    BranchLinked(DivZero, Some(EQ)),
-                    BranchLinked(DivMod, None),
-                    BinaryAssInstr(Mov, None, destAssembly, Return)) ++ restoreRegs
-                }
-                case A_Mod => {
-                    val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
-                    usedFunctions.addOne(DivZero)
-                    usedFunctions.addOne(PrintS)
-                    saveRegs ++ List(BinaryAssInstr(Mov, None, Return,  R1),
-                    BinaryAssInstr(Mov, None, R1, R2),
-                    BinaryAssInstr(Cmp, None, R1, Imm(0)),
-                    BranchLinked(DivZero, Some(EQ)),
-                    BranchLinked(DivMod, None),
-                    BinaryAssInstr(Mov, None, destAssembly, R1)) ++ restoreRegs
-                }
-                case A_And => List(TernaryAssInstr(And, None, destAssembly, R1, R2))
-                case A_Or => List(TernaryAssInstr(Or, None, destAssembly, R1, R2))
-                case A_GT => List(TernaryAssInstr(GT, None, destAssembly, R1, R2))
-                case A_GTE => List(TernaryAssInstr(GE, None, destAssembly, R1, R2))
-                case A_LT => List(TernaryAssInstr(LT, None, destAssembly, R1, R2))
-                case A_LTE => List(TernaryAssInstr(LE, None, destAssembly, R1, R2))
-                case A_EQ => List(TernaryAssInstr(EQ, None, destAssembly, R1, R2))
-                case A_NEQ => List(TernaryAssInstr(NE, None, destAssembly, R1, R2))
-            }
-            return src1Instr ++ src2Instr ++ destInstr ++ finalInstr
-        }
-        case UnaryOperation(op, src, dst) => {
-            val srcInstr = translateValueInto(src, allocator, R1)
-            val (destInstr, destAssembly) = translateValue(dst, allocator)
-            val finalInstrs = op match {
-                case A_Not => List(TernaryAssInstr(NE, None, destAssembly, R1, Imm(1)))
-                case A_Neg => {
-                    usedFunctions.addOne(Overflow)
-                    usedFunctions.addOne(PrintS)
-                    List(TernaryAssInstr(RightSub, None, destAssembly, R1, Imm(0)),
-                    BranchLinked(Overflow, Some(VS)))
-                }
-                case A_Len => translateMov(Offset(R1, Imm(-4)), destAssembly, allocator)
-                case A_Chr => translateMov(R1, destAssembly, allocator)
-                case A_Ord => translateMov(R1, destAssembly, allocator)
-                case A_ArrayCreate => translateMov(R1, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
-                case A_Assign => translateMov(R1, destAssembly, allocator)
-                case A_Mov => translateMov(R1, destAssembly, allocator)
-            }
-            srcInstr ++ destInstr ++ finalInstrs
-        }
-        case InbuiltFunction(op, src) => op match {
-            case A_PrintI => {
-                usedFunctions.addOne(PrintI)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(PrintI, None)
-            }
-            case A_PrintB => {
-                usedFunctions.addOne(PrintB)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(PrintB, None)
-            }
-            case A_PrintC => {
-                usedFunctions.addOne(PrintC)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(PrintC, None)
-            }
-            case A_PrintS => {
-                usedFunctions.addOne(PrintS)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchLinked(PrintS, None)
-            }
-            case A_PrintA => {
-                usedFunctions.addOne(PrintA)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(PrintA, None)
-            }
-            case A_PrintCA => {
-                usedFunctions.addOne(PrintCA)
-                usedFunctions.addOne(PrintC)
-                usedFunctions.addOne(OutOfBound)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(PrintCA, None)
-            }
-            case A_Println => {
-                usedFunctions.addOne(PrintLn)
-                List(BranchLinked(PrintLn, None))
-            }
-            case A_ArrayCreate => Nil
-            case A_Exit => {   
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                val exitCode: Operand = srcOp match {
-                    case Imm(x) => {
-                        if (x == -1) {
-                            Imm(255)
-                        } else {
-                            Imm(x)
-                        }
+    def translateInstruction(instruction: Instruction, allocator: RegisterAllocator): ListBuffer[AssInstr] = 
+        {
+        val instructions = new ListBuffer[AssInstr]
+        instruction match{
+            case BinaryOperation(op, src1, src2, dst) => {
+                val src1Instr = translateValueInto(src1, allocator, R1)
+                val src2Instr = translateValueInto(src2, allocator, R2)
+                val (destInstr, destAssembly) = translateValue(dst, allocator)
+                instructions.appendAll(src1Instr)
+                instructions.appendAll(src2Instr)
+                instructions.appendAll(destInstr)
+                op match {
+                    case A_Add => {
+                        usedFunctions.addOne(Overflow)
+                        usedFunctions.addOne(PrintS)
+                        instructions.append(TernaryAssInstr(Add, None, destAssembly, R1, R2))
+                        instructions.append(BranchLinked(Overflow, Some(VS)))
                     }
-                    case x => x
-                } 
-                srcInstr ++ translateMov(exitCode, Return, allocator) :+
-                BranchLinked(Exit, None)
-            }
-            case A_Free => {    
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                usedFunctions.addOne(Free)
-                usedFunctions.addOne(NullError)
-                usedFunctions.addOne(PrintS)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+
-                BranchLinked(Free, None)
-            }
-            case A_Len => Nil
-            case A_PairCreate => {
-                // Call malloc on size 8
-                //mov the address accordingly
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(Imm(8), Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, srcOp, allocator)
-            }
-            case A_ReadI => {
-                usedFunctions.addOne(ReadI)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                BranchLinked(ReadI, None) +: translateMov(Return, srcOp, allocator)     
-            }
-            case A_ReadC => {
-                usedFunctions.addOne(ReadC)
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
-            }
-            case A_Return => {
-                val (srcInstr, srcOp) = translateValue(src, allocator)
-                srcInstr ++ translateMov(srcOp, Return, allocator) :+ BranchUnconditional("0f")
-            }
-        }
-        case FunctionCall(name, args, dst) => {
-            var instr: List[AssInstr] = Nil
-            var count = 0
-            for (arg <- args) {
-                val (argInstr, argOp) = translateValue(arg, allocator)
-                if (count < 4) {
-                    val reg = argumentRegisters(count)
-                    instr = instr ++ (argInstr ++ translateMov(argOp, reg, allocator))
-                } else {
-                    instr = instr ++ (argInstr :+ UnaryAssInstr(Push, None, argOp))
+                    case A_Sub => {
+                        usedFunctions.addOne(Overflow)
+                        usedFunctions.addOne(PrintS)
+                        instructions.append(TernaryAssInstr(Sub, None, destAssembly, R1, R2))
+                        instructions.append(BranchLinked(Overflow, Some(VS)))
+                    }
+                    case A_Mul => {
+                        usedFunctions.addOne(Overflow)
+                        usedFunctions.addOne(PrintS)
+                        instructions.append(QuaternaryAssInstr(Smull, None, destAssembly, R3, R1, R2))
+                        instructions.append(TernaryAssInstr(Cmp, None, R3, destAssembly, ASR(31)))
+                        instructions.append(BranchLinked(Overflow, Some(NE)))
+                    }
+                    case A_Div => {
+                        val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
+                        usedFunctions.addOne(DivZero)
+                        usedFunctions.addOne(PrintS)
+                        instructions.appendAll(saveRegs)
+                        instructions.append(BinaryAssInstr(Mov, None, Return, R1))
+                        instructions.append(BinaryAssInstr(Mov, None, R1, R2))
+                        instructions.append(BinaryAssInstr(Cmp, None, R1, Imm(0)))
+                        instructions.append(BranchLinked(DivZero, Some(EQ)))
+                        instructions.append(BranchLinked(DivMod, None))
+                        instructions.append(BinaryAssInstr(Mov, None, destAssembly, Return))
+                        instructions.appendAll(restoreRegs)
+                    }
+                    case A_Mod => {
+                        val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
+                        usedFunctions.addOne(DivZero)
+                        usedFunctions.addOne(PrintS)
+                        instructions.appendAll(saveRegs)
+                        instructions.append(BinaryAssInstr(Mov, None, Return,  R1))
+                        instructions.append(BinaryAssInstr(Mov, None, R1, R2))
+                        instructions.append(BinaryAssInstr(Cmp, None, R1, Imm(0)))
+                        instructions.append(BranchLinked(DivZero, Some(EQ)))
+                        instructions.append(BranchLinked(DivMod, None))
+                        instructions.append(BinaryAssInstr(Mov, None, destAssembly, R1))
+                        instructions.appendAll(restoreRegs)
+                    }
+                    case A_And => instructions.append(TernaryAssInstr(And, None, destAssembly, R1, R2))
+                    case A_Or => instructions.append(TernaryAssInstr(Or, None, destAssembly, R1, R2))
+                    case A_GT => instructions.append(TernaryAssInstr(GT, None, destAssembly, R1, R2))
+                    case A_GTE => instructions.append(TernaryAssInstr(GE, None, destAssembly, R1, R2))
+                    case A_LT => instructions.append(TernaryAssInstr(LT, None, destAssembly, R1, R2))
+                    case A_LTE => instructions.append(TernaryAssInstr(LE, None, destAssembly, R1, R2))
+                    case A_EQ => instructions.append(TernaryAssInstr(EQ, None, destAssembly, R1, R2))
+                    case A_NEQ => instructions.append(TernaryAssInstr(NE, None, destAssembly, R1, R2))
                 }
-                count = count + 1
             }
-            val (dstInstr, dstOp) = translateValue(dst, allocator)
-            instr ++ (CallFunction(name) +: dstInstr) ++ translateMov(Return, dstOp, allocator)
-        }
-        case IfInstruction(condition, ifInstructions, elseInstructions) => {
-            val preIf = allocator.getState()
-            val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val (assInstr, assOp) = translateValue(condition.value, allocator)
-            val ifInstr = ifInstructions.map(i => translateInstruction(i, allocator)).flatten
-            val resetIf = allocator.reloadState(preIf)
-            val elseInstr = elseInstructions.map(i => translateInstruction(i, allocator)).flatten
-            val resetElse = allocator.reloadState(preIf)
-            val elseLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            val endLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            conditionalInstr ++ assInstr ++ (BinaryAssInstr(Cmp, None, assOp, Imm(1)) +: BranchNe(elseLabel) +: (ifInstr ++ resetIf) :+ BranchUnconditional(endLabel)) ++ 
-            (NewLabel(elseLabel) +: (elseInstr ++ resetElse) :+ NewLabel(endLabel))
-        }
-        case WhileInstruction(condition, body) => {
-            val originalConditionInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val (ocInstr, ocOp) = translateValue(condition.value, allocator)
-            val preWhile = allocator.getState()
-            val startLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            val endLabel = generateLabel(labelCount)
-            labelCount = labelCount + 1
-            val bodyInstrs = body.map(i => translateInstruction(i, allocator)).flatten
-            val loopConditionInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val (loopInstr, loopOp) = translateValue(condition.value, allocator)
-            // val preCond = allocator.getState()
-            // val endCondition = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
-            val resetRegs = allocator.reloadState(preWhile)
+            case UnaryOperation(op, src, dst) => {
+                val srcInstr = translateValueInto(src, allocator, R1)
+                val (destInstr, destAssembly) = translateValue(dst, allocator)
+                instructions.appendAll(srcInstr)
+                instructions.appendAll(destInstr)
+                op match {
+                    case A_Not => List(TernaryAssInstr(NE, None, destAssembly, R1, Imm(1)))
+                    case A_Neg => {
+                        usedFunctions.addOne(Overflow)
+                        usedFunctions.addOne(PrintS)
+                        instructions.append(TernaryAssInstr(RightSub, None, destAssembly, R1, Imm(0)))
+                        instructions.append(BranchLinked(Overflow, Some(VS)))
+                    }
+                    case A_Len => instructions.appendAll(translateMov(Offset(R1, Imm(-4)), destAssembly, allocator))
+                    case A_Chr => instructions.appendAll(translateMov(R1, destAssembly, allocator))
+                    case A_Ord => instructions.appendAll(translateMov(R1, destAssembly, allocator))
+                    case A_ArrayCreate => {
+                        instructions.appendAll(translateMov(R1, Return, allocator))
+                        instructions.append(BranchLinked(Malloc, None))
+                        instructions.appendAll(translateMov(Return, destAssembly, allocator))
+                    }
+                    case A_Assign => instructions.appendAll(translateMov(R1, destAssembly, allocator))
+                    case A_Mov => instructions.appendAll(translateMov(R1, destAssembly, allocator))
+                }
+            }
+            case InbuiltFunction(op, src) => op match {
+                case A_PrintI => instructions.appendAll(translatePrint(src, allocator, PrintI))
+                case A_PrintB => instructions.appendAll(translatePrint(src, allocator, PrintB))
+                case A_PrintC => instructions.appendAll(translatePrint(src, allocator, PrintC))
+                case A_PrintS => instructions.appendAll(translatePrint(src, allocator, PrintS))
+                case A_PrintA => instructions.appendAll(translatePrint(src, allocator, PrintA))
+                case A_PrintCA => {
+                    usedFunctions.addOne(PrintC)
+                    usedFunctions.addOne(OutOfBound)
+                    instructions.appendAll(translatePrint(src, allocator, PrintI))
+                }
+                case A_Println => {
+                    usedFunctions.addOne(PrintLn)
+                    List(BranchLinked(PrintLn, None))
+                }
+                case A_Exit => {   
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    val exitCode: Operand = srcOp match {
+                        case Imm(x) => {
+                            if (x == -1) {
+                                Imm(255)
+                            } else {
+                                Imm(x)
+                            }
+                        }
+                        case x => x
+                    }
+                    instructions.appendAll(srcInstr)
+                    instructions.appendAll(translateMov(exitCode, Return, allocator))
+                    instructions.append(BranchLinked(Exit, None))
+                }
+                case A_Free => {    
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    usedFunctions.addOne(Free)
+                    usedFunctions.addOne(NullError)
+                    usedFunctions.addOne(PrintS)
+                    instructions.appendAll(srcInstr)
+                    instructions.appendAll(translateMov(srcOp, Return, allocator))
+                    instructions.append(BranchLinked(Free, None))
+                }
+                case A_PairCreate => {
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    instructions.appendAll(srcInstr)
+                    instructions.appendAll(translateMov(Imm(8), Return, allocator))
+                    instructions.append(BranchLinked(Malloc, None))
+                    instructions.appendAll(translateMov(Return, srcOp, allocator))
+                }
+                case A_ReadI => {
+                    usedFunctions.addOne(ReadI)
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    instructions.appendAll(srcInstr)
+                    instructions.append(BranchLinked(ReadI, None))
+                    instructions.appendAll(translateMov(Return, srcOp, allocator))    
+                }
+                case A_ReadC => {
+                    usedFunctions.addOne(ReadC)
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    instructions.appendAll(srcInstr)
+                    instructions.append(BranchLinked(ReadC, None))
+                    instructions.appendAll(translateMov(Return, srcOp, allocator))
+                }
+                case A_Return => {
+                    val (srcInstr, srcOp) = translateValue(src, allocator)
+                    instructions.appendAll(srcInstr)
+                    instructions.appendAll(translateMov(srcOp, Return, allocator))
+                    instructions.append(BranchUnconditional("0f"))
+                }
+                case _ => 
+            }
+            case FunctionCall(name, args, dst) => {
+                var count = 0
+                for (arg <- args) {
+                    val (argInstr, argOp) = translateValue(arg, allocator)
+                    if (count < 4) {
+                        val reg = argumentRegisters(count)
+                        instructions.appendAll(argInstr)
+                        instructions.appendAll(translateMov(argOp, reg, allocator))
+                    } else {
+                        instructions.appendAll(argInstr)
+                        instructions.append(UnaryAssInstr(Push, None, argOp))
+                    }
+                    count = count + 1
+                }
+                val (dstInstr, dstOp) = translateValue(dst, allocator)
+                instructions.append(CallFunction(name))
+                instructions.appendAll(dstInstr)
+                instructions.appendAll(translateMov(Return, dstOp, allocator))
+            }
+            case IfInstruction(condition, ifInstructions, elseInstructions) => {
+                val preIf = allocator.getState()
+                val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
+                val (assInstr, assOp) = translateValue(condition.value, allocator)
+                val ifInstr = ifInstructions.map(i => translateInstruction(i, allocator)).flatten
+                val resetIf = allocator.reloadState(preIf)
+                val elseInstr = elseInstructions.map(i => translateInstruction(i, allocator)).flatten
+                val resetElse = allocator.reloadState(preIf)
+                val elseLabel = generateLabel(labelCount)
+                labelCount = labelCount + 1
+                val endLabel = generateLabel(labelCount)
+                labelCount = labelCount + 1
+                instructions.appendAll(conditionalInstr)
+                instructions.appendAll(assInstr)
+                instructions.append(BinaryAssInstr(Cmp, None, assOp, Imm(1)))
+                instructions.append(BranchNe(elseLabel))
+                instructions.appendAll(ifInstr)
+                instructions.appendAll(resetIf)
+                instructions.append(BranchUnconditional(endLabel))
+                instructions.append(NewLabel(elseLabel))
+                instructions.appendAll(elseInstr)
+                instructions.appendAll(resetElse)
+                instructions.append(NewLabel(endLabel))
+            }
+            case WhileInstruction(condition, body) => {
+                val originalConditionInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
+                val (ocInstr, ocOp) = translateValue(condition.value, allocator)
+                val preWhile = allocator.getState()
+                val startLabel = generateLabel(labelCount)
+                labelCount = labelCount + 1
+                val endLabel = generateLabel(labelCount)
+                labelCount = labelCount + 1
+                val bodyInstrs = body.map(i => translateInstruction(i, allocator)).flatten
+                val loopConditionInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
+                val (loopInstr, loopOp) = translateValue(condition.value, allocator)
+                // val preCond = allocator.getState()
+                // val endCondition = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
+                val resetRegs = allocator.reloadState(preWhile)
 
-            // Fails in the case that ecInstr clobbers a register
-            originalConditionInstr ++ ocInstr ++ List(BinaryAssInstr(Cmp, None, ocOp, Imm(1)), BranchNe(endLabel), NewLabel(startLabel)) ++
-            bodyInstrs ++ loopConditionInstr ++ loopInstr ++ List(BinaryAssInstr(Cmp, None, loopOp, Imm(1))) ++ resetRegs ++
-            List(BranchEq(startLabel), NewLabel(endLabel))
+                instructions.appendAll(originalConditionInstr)
+                instructions.appendAll(ocInstr)
+                instructions.append(BinaryAssInstr(Cmp, None, ocOp, Imm(1)))
+                instructions.append(BranchNe(endLabel))
+                instructions.append(NewLabel(startLabel))
+                instructions.appendAll(bodyInstrs)
+                instructions.appendAll(loopConditionInstr)
+                instructions.appendAll(loopInstr)
+                instructions.append(BinaryAssInstr(Cmp, None, loopOp, Imm(1)))
+                instructions.appendAll(resetRegs)
+                instructions.append(BranchEq(startLabel))
+                instructions.append( NewLabel(endLabel))
+            }
+            case ScopeInstruction(body) => {
+                val preScope = allocator.getState()
+                val bodyInstrs = body.map(i => translateInstruction(i, allocator)).flatten
+                val resetRegs = allocator.reloadState(preScope)
+                instructions.appendAll(bodyInstrs)
+                instructions.appendAll(resetRegs)
+            }
         }
-        case ScopeInstruction(body) => {
-            val preScope = allocator.getState()
-            val bodyInstrs = body.map(i => translateInstruction(i, allocator)).flatten
-            val resetRegs = allocator.reloadState(preScope)
-            bodyInstrs ++ resetRegs
-        }
+        instructions
     }
 
     def generateLabel(counter: Int): String = s".L${counter.toString}"
 
     def generateStringLabel(counter: Int): String = s".L.str${counter.toString}"
 
-    def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): List[AssInstr] = {
+    def translatePrint(src: Value, allocator: RegisterAllocator, printType: InBuilt): ListBuffer[AssInstr] = {
+        val instructions = new ListBuffer[AssInstr]
+        usedFunctions.addOne(printType)
+        val (srcInstr, srcOp) = translateValue(src, allocator)
+        instructions.appendAll(srcInstr)
+        instructions.appendAll(translateMov(srcOp, Return, allocator))
+        instructions.append(BranchLinked(printType, None))
+        instructions
+    }
+
+    def translateMov(srcAss: Operand, dstAss: Operand, allocator: RegisterAllocator): ListBuffer[AssInstr] = {
+        val instructions = new ListBuffer[AssInstr]
         (srcAss, dstAss) match {
             case (Label(label), Offset(reg, offset)) => {
                 reg match {
-                    case Offset(derefReg, derefOffset) => {
-                        Nil
-                    }
                     case r: Register => {
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Label(label)),
-                            BinaryAssInstr(Str, None, accessReg, Offset(r, offset)))
+                        instructions.appendAll(accessInstr)
+                        instructions.append(BinaryAssInstr(Ldr, None, accessReg, Label(label)))
+                        instructions.append(BinaryAssInstr(Str, None, accessReg, Offset(r, offset)))
                     }
-                    case _ => Nil
+                    case _ =>
                 }
             }
-            case (Label(label), _) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
-            case (Offset(srcReg, srcOffset), Offset(dstReg, dstOffset))=> {
-                Nil
-            }
+            case (Label(label), _) => instructions.append(BinaryAssInstr(Ldr, None, dstAss, srcAss))
             case (Offset(reg, offset), o) => {
                 reg match {
-                    case Offset(derefReg, derefOffset) => {
-                        Nil
-                    }
                     case r: Register => {
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset))) ++ translateMov(accessReg, o, allocator)
+                        instructions.appendAll(accessInstr)
+                        instructions.append(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset)))
+                        instructions.appendAll(translateMov(accessReg, o, allocator))
                     }
-                    case _ => Nil
+                    case _ =>
                 }
             }
             case (o, Offset(reg, offset)) => {
                 reg match {
-                    case Offset(derefReg, derefOffset) => Nil
                     case r: Register => {
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                        accessInstr ++ translateMov(o, accessReg, allocator) ++
-                            List(BinaryAssInstr(Str, None, accessReg, Offset(reg, offset)))
+                        instructions.appendAll(accessInstr)
+                        instructions.appendAll(translateMov(o, accessReg, allocator))
+                        instructions.append(BinaryAssInstr(Str, None, accessReg, Offset(reg, offset)))
                     }
                     case _ => Nil
                 }
             }
             case (Imm(x), _) => {
                 if (x > 255 || x < -255) {
-                    List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
+                    instructions.append(BinaryAssInstr(Ldr, None, dstAss, srcAss))
                 } else {
-                    List(BinaryAssInstr(Mov, None, dstAss, srcAss))
+                    instructions.append(BinaryAssInstr(Mov, None, dstAss, srcAss))
                 }
             }
-            case _ => List(BinaryAssInstr(Mov, None, dstAss, srcAss))
+            case _ => instructions.append(BinaryAssInstr(Mov, None, dstAss, srcAss))
         }
+        instructions
     }
 }
