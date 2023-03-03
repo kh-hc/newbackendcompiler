@@ -43,6 +43,7 @@ object CodeGenerator{
         PrintC -> "_printc",
         PrintS -> "_prints",
         PrintA -> "_printp",
+        PrintCA -> "_printca",
         PrintLn -> "_println",
         ReadI -> "_readi",
         ReadC -> "_readc",
@@ -90,7 +91,8 @@ _printi:
     mov r0, #0
     bl fflush
     pop {r1}
-    pop {pc}""",
+    pop {pc}
+.ltorg""",
         PrintB -> """.data
     .word 5
 .L._printb_str0:
@@ -109,6 +111,7 @@ _printb:
     bne .L_printb0
     ldr r2, =.L._printb_str0
     b .L_printb1
+    .ltorg
 .L_printb0:
     ldr r2, =.L._printb_str1
 .L_printb1:
@@ -133,7 +136,8 @@ _printc:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         PrintS ->""".data
     .word 4
 .L._prints_str0:
@@ -149,7 +153,8 @@ _prints:
 	mov r0, #0
 	bl fflush
     pop {r1, r2}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         PrintA -> """.data
     .word 2
 .L._printp_str0:
@@ -164,7 +169,139 @@ _printp:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
+        PrintCA -> """_printca:
+push {lr}
+push {fp}
+mov fp, sp
+ldr r12, =#44
+subs sp, sp, r12
+push {r10}
+push {r4}
+push {r5}
+push {r6}
+push {r7}
+push {r8}
+push {r9}
+mov r4, r0
+mov r1, #0
+mov r10, r1
+mov r1, r10
+mov r9, r1
+mov r1, r9
+mov r7, r1
+mov r1, r4
+mov r8, r1
+mov r1, r8
+ldr r6, [r1, #-4]
+mov r8, r6
+mov r1, r7
+mov r2, r8
+cmp r1, r2
+movlt r7, #1
+movge r7, #0
+cmp r7, #1
+bne .L1
+.L0:
+mov r1, #4
+mov r5, r1
+mov r1, r4
+str r4, [fp, #-4]
+mov r4, r1
+mov r1, r9
+str r10, [fp, #-8]
+mov r10, r1
+mov r1, r10
+mov r2, r5
+smull r10, r3, r1, r2
+cmp r3, r10, asr #31
+blne _errOverflow
+push {r1}
+mov r3, r10
+cmp r3, #0
+mov r1, r3
+bllt _errOutOfBounds
+ldr lr, [r4, #-4]
+mov r0, #4
+muls lr, lr, r0
+mov r3, r10
+cmp r3, lr
+mov r1, r3
+blgt _errOutOfBounds
+pop {r1}
+str r9, [fp, #-12]
+ldr r9, [r4, r10]
+mov r1, r9
+str r7, [fp, #-16]
+mov r7, r1
+mov r0, r7
+bl _printc
+str r8, [fp, #-20]
+ldr r8, [fp, #-12]
+mov r1, r8
+mov r6, r1
+mov r1, #1
+str r5, [fp, #-24]
+mov r5, r1
+mov r1, r6
+mov r2, r5
+adds r6, r1, r2
+blvs _errOverflow
+mov r1, r6
+mov r8, r1
+mov r1, r8
+str r4, [fp, #-28]
+ldr r4, [fp, #-16]
+mov r4, r1
+str r10, [fp, #-32]
+ldr r10, [fp, #-4]
+mov r1, r10
+ldr r9, [fp, #-20]
+mov r9, r1
+mov r1, r9
+str r7, [fp, #-36]
+ldr r7, [r1, #-4]
+mov r9, r7
+mov r1, r4
+mov r2, r9
+cmp r1, r2
+movlt r4, #1
+movge r4, #0
+cmp r4, #1
+str r10, [fp, #-4]
+ldr r10, [fp, #-8]
+str r4, [fp, #-16]
+ldr r4, [fp, #-4]
+ldr r7, [fp, #-16]
+mov r1, r8
+mov r8, r9
+mov r9, r1
+b 1f
+.ltorg
+1:
+str r5, [fp, #-40]
+str r6, [fp, #-44]
+beq .L0
+.L1:
+mov r1, #0
+mov r6, r1
+mov r0, r6
+b 0f
+0:
+ldr r12, =#44
+adds sp, sp, r12
+pop {r9}
+pop {r8}
+pop {r7}
+pop {r6}
+pop {r5}
+pop {r4}
+pop {r10}
+pop {fp}
+pop {pc}
+.ltorg
+""",
         PrintLn -> """.data
     .word 0
 .L._println_str0:
@@ -178,7 +315,8 @@ _println:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         ReadC -> """.data
 	.word 3
 .L._readc_str0:
@@ -192,7 +330,8 @@ _readc:
 	bl scanf
 	ldrsb r0, [sp, #0]
 	add sp, sp, #1
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         ReadI -> """.data
 	.word 2
 .L._readi_str0:
@@ -206,7 +345,8 @@ _readi:
     bl scanf
     ldr r0, [sp, #0]
 	add sp, sp, #4
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         Overflow -> """
 .data
 @ length of .L._errOverflow_str0
@@ -218,7 +358,8 @@ _errOverflow:
     ldr r0, =.L._errOverflow_str0
     bl _prints
     mov r0, #255
-    bl exit""",
+    bl exit
+    .ltorg""",
         DivZero -> """
 .data
 	@ length of .L._errDivZero_str0
@@ -231,6 +372,7 @@ _errDivZero:
 	bl _prints
 	mov r0, #255
 	bl exit
+.ltorg
 """,
         OutOfBound -> """
 .data
@@ -245,6 +387,7 @@ _errOutOfBounds:
     bl fflush
     mov r0, #255
     bl exit
+.ltorg
  """,
         Free -> """.text
 _freepair:
@@ -257,6 +400,7 @@ _freepair:
     bl free
     pop {r8}
     pop {pc}
+.ltorg
 """,
     NullError -> """.data
     .word 45
@@ -268,6 +412,7 @@ _errNull:
     bl _prints
     mov r0, #255
     bl exit
+.ltorg
     """)
     
     def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
@@ -303,12 +448,17 @@ _errNull:
             // TODO: ensure function names are consistent
             blockSB.append(s"wacc_${block.label.label}:\n")
         }
+        var lineCount = 0
         block.instrs.map(i => {
+            if (lineCount > 100) {
+                lineCount = 0
+                blockSB.append("b 1f\n.ltorg\n1:\n")
+            } else {
+                lineCount = lineCount + 1
+            }
             blockSB.append(instructionToString(i))
             blockSB.append("\n")})
-        if (block.label.label != ("main")) {
-            blockSB.append(".ltorg\n")
-        }
+        blockSB.append(".ltorg\n")
         return blockSB
     }
 

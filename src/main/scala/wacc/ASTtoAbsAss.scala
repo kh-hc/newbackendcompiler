@@ -19,8 +19,10 @@ class AbstractTranslator {
         return Program(body, functions)
     }
 
-    def translateFunction(func: FunctionUnit): Function
-        = Function(func.id.id, translateStat(func.body), func.params.paramlist.map(p => Stored(func.symbolTable.get.lookupRecursiveID(p.id.id))))
+    def translateFunction(func: FunctionUnit): Function = {
+        func.params.paramlist.map(p => func.body.symbolTable.get.setAssignedId(p.id.id))
+        Function(func.id.id, translateStat(func.body), func.params.paramlist.map(p => Stored(func.symbolTable.get.lookupRecursiveID(p.id.id))))
+    }
 
     def translateMain(stat: StatementUnit): List[Instruction] = translateStat(stat)
 
@@ -29,6 +31,7 @@ class AbstractTranslator {
         case SkipStat => List.empty
         case AssignStat(t, id, value) => {
             val (rightIntermediate, instrR) = translateRvalue(value, stat.symbolTable.get)
+            stat.symbolTable.get.setAssignedId(id.id)
             return instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, Stored(stat.symbolTable.get.lookupRecursiveID(id.id))))
         }
         case ReassignStat(left, right) => {
@@ -62,6 +65,7 @@ class AbstractTranslator {
                 case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
                 case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
                 case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) =>  List(InbuiltFunction(A_PrintCA, intermediate))
                 case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
             })
         }
@@ -72,7 +76,7 @@ class AbstractTranslator {
                 case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
                 case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
                 case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
-                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintCA, intermediate))
                 case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
             }) ++ List(InbuiltFunction(A_Println, Null))
         }
@@ -86,7 +90,7 @@ class AbstractTranslator {
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
             return List(WhileInstruction(Conditional(intermediate, conditions), translateStat(body)))
         }
-        case ScopeStat(body) => translateStat(body)
+        case ScopeStat(body) => List(ScopeInstruction(translateStat(body)))
         case SeqStat(statements) => statements.map(translateStat).flatten
     }
 }

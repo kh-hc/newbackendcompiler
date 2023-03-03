@@ -18,6 +18,7 @@ object assemblyAbstractStructure {
 
     case class IfInstruction(condition: Conditional, ifInstructions: List[Instruction], elseInstructions: List[Instruction]) extends Instruction
     case class WhileInstruction(condition: Conditional, body: List[Instruction]) extends Instruction
+    case class ScopeInstruction(body: List[Instruction]) extends Instruction
 
     case class Conditional(value: Value, conditions: List[Instruction])
 
@@ -63,6 +64,7 @@ object assemblyAbstractStructure {
     case object A_PrintB extends AssemblyIOperator
     case object A_PrintS extends AssemblyIOperator
     case object A_PrintA extends AssemblyIOperator
+    case object A_PrintCA extends AssemblyIOperator
     case object A_Println extends AssemblyIOperator
     case object A_Assign extends AssemblyUOperator
     case object A_ReadI extends AssemblyIOperator

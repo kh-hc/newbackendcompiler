@@ -38,7 +38,7 @@ object Main {
             case e: Exception => {
                 println(e)
                 println(e.getCause())
-                println(e.getStackTrace())
+                println(e.getStackTrace().map(println))
             }
         }
     }

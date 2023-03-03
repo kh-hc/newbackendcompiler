@@ -61,8 +61,38 @@ class SymbolTable(val parent: Option[SymbolTable]) {
     }
 
     def lookupRecursiveID(name: String) : String = lookup(name) match {
-        case None => parent.get.lookupRecursiveID(name)
-        case Some(st) => (name + unique_id)
+        case None => parent match {
+            case Some(p) => p.lookupRecursiveID(name)
+            case None => ""
+        }
+        case Some(st) => {
+            if (st.allocated){
+                (name + unique_id)
+            } else {
+                parent match{
+                    case Some(p) => {
+                        p.lookupRecursiveID(name) match{
+                            case "" => {
+                                st.allocated = true
+                                (name + unique_id)
+                            }
+                            case s: String => s
+                        }
+                    }
+                    case None => {
+                        st.allocated = true
+                        (name + unique_id)
+                    }
+                }
+            }
+        }
+    }
+
+    def setAssignedId(name: String): Unit = lookup(name) match {
+        case None => parent.get.setAssignedId(name)
+        case Some(st) => {
+            st.allocated = true
+        } 
     }
 
     def lookupFunctionRecursive(name: String) : Option[SymbolType] = {
@@ -80,7 +110,9 @@ class SymbolTable(val parent: Option[SymbolTable]) {
 object SymbolTypes {
     import abstractSyntaxTree._
 
-    sealed trait SymbolType
+    sealed trait SymbolType {
+        var allocated: Boolean = false
+    }
 
     // Ambiguous symbol refers to any symbol of unknown type
     object AmbiguousSymbol extends SymbolType with PairSymbol

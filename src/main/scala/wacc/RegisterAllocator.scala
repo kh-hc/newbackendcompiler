@@ -1,5 +1,7 @@
 package wacc
 
+import parsley.registers
+
 
 
 class RegisterAllocator() {
@@ -151,15 +153,14 @@ class RegisterAllocator() {
                     retrievalInstrs.addAll(instrs)
                     retrievalInstrs += BinaryAssInstr(Mov, None, newReg, reg)
                 } else {
-                    storage(arg) = Stored((numberOfArgs + 2 - count) * -1)
+                    val (instrs, newReg) = getRegister(arg)
+                    retrievalInstrs.addAll(instrs)
+                    retrievalInstrs += BinaryAssInstr(Ldr, None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4)))
+                    storage(arg) = Stored((numberOfArgs - count + 1) * -1)
                 }
                 count = count + 1
             }
         retrievalInstrs.toList
-    }
-
-    def newScope() = {
-        newThisScope.clear()
     }
 
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
@@ -168,7 +169,8 @@ class RegisterAllocator() {
         pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
+            pushInstr.append(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
+            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, IPC))
         }
         val popInstr = ListBuffer[AssInstr]()
         for (reg <- usedEverRegisters) {
@@ -177,33 +179,16 @@ class RegisterAllocator() {
         }
         val revPop = popInstr.reverse
         if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
+            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, IPC))
+            revPop.prepend(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
         }
-        //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
+        revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))
         return (pushInstr.toList, revPop.toList)
     }
 
-    def generateScopeBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
-        val pushInstr = ListBuffer[AssInstr]()
-        if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
-        }
-        val popInstr = ListBuffer[AssInstr]()
-        for (reg <- newThisScope) {
-            pushInstr.append(UnaryAssInstr(Push, None, reg))
-            popInstr.append(UnaryAssInstr(Pop, None, reg))
-        }
-        val revPop = popInstr.reverse
-        if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
-        }
-        return (pushInstr.toList, revPop.toList)
-    }
-
     def saveArgs(regs: List[Register]): (List[AssInstr], List[AssInstr]) = {
-        // TODO: Save these properly
         return (regs.map(r => UnaryAssInstr(Push, None, r)).toList, regs.map(r => UnaryAssInstr(Pop, None, r)).reverse.toList)
     }
 }
