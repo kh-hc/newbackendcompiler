@@ -90,7 +90,8 @@ _printi:
     mov r0, #0
     bl fflush
     pop {r1}
-    pop {pc}""",
+    pop {pc}
+.ltorg""",
         PrintB -> """.data
     .word 5
 .L._printb_str0:
@@ -109,6 +110,7 @@ _printb:
     bne .L_printb0
     ldr r2, =.L._printb_str0
     b .L_printb1
+    .ltorg
 .L_printb0:
     ldr r2, =.L._printb_str1
 .L_printb1:
@@ -133,7 +135,8 @@ _printc:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         PrintS ->""".data
     .word 4
 .L._prints_str0:
@@ -149,7 +152,8 @@ _prints:
 	mov r0, #0
 	bl fflush
     pop {r1, r2}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         PrintA -> """.data
     .word 2
 .L._printp_str0:
@@ -164,7 +168,8 @@ _printp:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         PrintLn -> """.data
     .word 0
 .L._println_str0:
@@ -178,7 +183,8 @@ _println:
 	mov r0, #0
 	bl fflush
     pop {r1}
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         ReadC -> """.data
 	.word 3
 .L._readc_str0:
@@ -192,7 +198,8 @@ _readc:
 	bl scanf
 	ldrsb r0, [sp, #0]
 	add sp, sp, #1
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         ReadI -> """.data
 	.word 2
 .L._readi_str0:
@@ -206,7 +213,8 @@ _readi:
     bl scanf
     ldr r0, [sp, #0]
 	add sp, sp, #4
-	pop {pc}""",
+	pop {pc}
+    .ltorg""",
         Overflow -> """
 .data
 @ length of .L._errOverflow_str0
@@ -218,7 +226,8 @@ _errOverflow:
     ldr r0, =.L._errOverflow_str0
     bl _prints
     mov r0, #255
-    bl exit""",
+    bl exit
+    .ltorg""",
         DivZero -> """
 .data
 	@ length of .L._errDivZero_str0
@@ -231,6 +240,7 @@ _errDivZero:
 	bl _prints
 	mov r0, #255
 	bl exit
+.ltorg
 """,
         OutOfBound -> """
 .data
@@ -245,6 +255,7 @@ _errOutOfBounds:
     bl fflush
     mov r0, #255
     bl exit
+.ltorg
  """,
         Free -> """.text
 _freepair:
@@ -257,6 +268,7 @@ _freepair:
     bl free
     pop {r8}
     pop {pc}
+.ltorg
 """,
     NullError -> """.data
     .word 45
@@ -268,6 +280,7 @@ _errNull:
     bl _prints
     mov r0, #255
     bl exit
+.ltorg
     """)
     
     def buildAssembly(program: AssProg, waccName: String, usedInbuilts: Set[InBuilt], funcs: List[Block], usedStringConstants: Map[String, String]) = {
@@ -303,12 +316,17 @@ _errNull:
             // TODO: ensure function names are consistent
             blockSB.append(s"wacc_${block.label.label}:\n")
         }
+        var lineCount = 0
         block.instrs.map(i => {
+            if (lineCount > 100) {
+                lineCount = 0
+                blockSB.append("b 1f\n.ltorg\n1:\n")
+            } else {
+                lineCount = lineCount + 1
+            }
             blockSB.append(instructionToString(i))
             blockSB.append("\n")})
-        if (block.label.label != ("main")) {
-            blockSB.append(".ltorg\n")
-        }
+        blockSB.append(".ltorg\n")
         return blockSB
     }
 
@@ -382,6 +400,7 @@ _errNull:
             }
             case CallFunction(function) => {
                 instructionBuilder.append("bl wacc_" + function)
+                instructionBuilder.append(".ltorg")
             }
         }
         return instructionBuilder

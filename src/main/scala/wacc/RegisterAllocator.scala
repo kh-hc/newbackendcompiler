@@ -158,10 +158,6 @@ class RegisterAllocator() {
         retrievalInstrs.toList
     }
 
-    def newScope() = {
-        newThisScope.clear()
-    }
-
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
         pushInstr.append(UnaryAssInstr(Push, None, LR))
@@ -182,23 +178,6 @@ class RegisterAllocator() {
         //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))
-        return (pushInstr.toList, revPop.toList)
-    }
-
-    def generateScopeBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
-        val pushInstr = ListBuffer[AssInstr]()
-        if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
-        }
-        val popInstr = ListBuffer[AssInstr]()
-        for (reg <- newThisScope) {
-            pushInstr.append(UnaryAssInstr(Push, None, reg))
-            popInstr.append(UnaryAssInstr(Pop, None, reg))
-        }
-        val revPop = popInstr.reverse
-        if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
-        }
         return (pushInstr.toList, revPop.toList)
     }
 

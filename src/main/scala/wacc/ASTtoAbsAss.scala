@@ -29,6 +29,7 @@ class AbstractTranslator {
         case SkipStat => List.empty
         case AssignStat(t, id, value) => {
             val (rightIntermediate, instrR) = translateRvalue(value, stat.symbolTable.get)
+            stat.symbolTable.get.setAssignedId(id.id)
             return instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, Stored(stat.symbolTable.get.lookupRecursiveID(id.id))))
         }
         case ReassignStat(left, right) => {
@@ -86,7 +87,7 @@ class AbstractTranslator {
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
             return List(WhileInstruction(Conditional(intermediate, conditions), translateStat(body)))
         }
-        case ScopeStat(body) => translateStat(body)
+        case ScopeStat(body) => List(ScopeInstruction(translateStat(body)))
         case SeqStat(statements) => statements.map(translateStat).flatten
     }
 }

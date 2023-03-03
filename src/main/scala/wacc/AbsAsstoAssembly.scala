@@ -281,14 +281,19 @@ class AssemblyTranslator {
             instr ++ (CallFunction(name) +: dstInstr) ++ translateMov(Return, dstOp, allocator)
         }
         case IfInstruction(condition, ifInstructions, elseInstructions) => {
+            val preIf = allocator.getState()
             val conditionalInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
             val (assInstr, assOp) = translateValue(condition.value, allocator)
+            val ifInstr = ifInstructions.map(i => translateInstruction(i, allocator)).flatten
+            val resetIf = allocator.reloadState(preIf)
+            val elseInstr = elseInstructions.map(i => translateInstruction(i, allocator)).flatten
+            val resetElse = allocator.reloadState(preIf)
             val elseLabel = generateLabel(labelCount)
             labelCount = labelCount + 1
             val endLabel = generateLabel(labelCount)
             labelCount = labelCount + 1
-            conditionalInstr ++ assInstr ++ (BinaryAssInstr(Cmp, None, assOp, Imm(1)) +: BranchNe(elseLabel) +: ifInstructions.map(i => translateInstruction(i, allocator)).flatten :+ BranchUnconditional(endLabel)) ++ 
-            (NewLabel(elseLabel) +: elseInstructions.map(i => translateInstruction(i, allocator)).flatten :+ NewLabel(endLabel))
+            conditionalInstr ++ assInstr ++ (BinaryAssInstr(Cmp, None, assOp, Imm(1)) +: BranchNe(elseLabel) +: (ifInstr ++ resetIf) :+ BranchUnconditional(endLabel)) ++ 
+            (NewLabel(elseLabel) +: (elseInstr ++ resetElse) :+ NewLabel(endLabel))
         }
         case WhileInstruction(condition, body) => {
             val originalConditionInstr = condition.conditions.map(i => translateInstruction(i, allocator)).flatten
@@ -309,6 +314,12 @@ class AssemblyTranslator {
             originalConditionInstr ++ ocInstr ++ List(BinaryAssInstr(Cmp, None, ocOp, Imm(1)), BranchNe(endLabel), NewLabel(startLabel)) ++
             bodyInstrs ++ loopConditionInstr ++ loopInstr ++ List(BinaryAssInstr(Cmp, None, loopOp, Imm(1))) ++ resetRegs ++
             List(BranchEq(startLabel), NewLabel(endLabel))
+        }
+        case ScopeInstruction(body) => {
+            val preScope = allocator.getState()
+            val bodyInstrs = body.map(i => translateInstruction(i, allocator)).flatten
+            val resetRegs = allocator.reloadState(preScope)
+            bodyInstrs ++ resetRegs
         }
     }
 
