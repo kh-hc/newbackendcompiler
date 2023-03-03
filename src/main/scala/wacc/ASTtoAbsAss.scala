@@ -96,13 +96,13 @@ class AbstractTranslator {
             val array = getNewIntermediate
             var assignInstrs: List[Instruction] = List.empty
             for (i <- 0 to (value.length - 1)) {
-                val indexValue = ArrayAccess(Immediate(i * 4), array)
+                val indexValue = ArrayAccess(Immediate(i * 4), array, true)
                 assignInstrs = assignInstrs ++ translateExp(value(i), indexValue, st)
             }
             // Remember to store the length in the array
             // We malloc an area of length + 1, store length in 0, then return the array address as 4
             (array, List(UnaryOperation(A_ArrayCreate, Immediate((value.length + 1)* 4), array),
-                UnaryOperation(A_Mov, Immediate(value.length), ArrayAccess(Immediate(0), array)),
+                UnaryOperation(A_Mov, Immediate(value.length), ArrayAccess(Immediate(0), array, true)),
                 BinaryOperation(A_Add, array, Immediate(4), array)) ++ assignInstrs)
         }
         case NewPair(exprLeft, exprRight) => {
@@ -168,29 +168,12 @@ class AbstractTranslator {
             for(pos <- positions.dropRight(1)){
                 instructions.appendAll(translateExp(pos, position, st))
                 instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
-                instructions.append(UnaryOperation(A_Mov, ArrayAccess(position, oldAccess), newAccess))
+                instructions.append(UnaryOperation(A_Mov, ArrayAccess(position, oldAccess, false), newAccess))
                 instructions.append(UnaryOperation(A_Mov, newAccess, oldAccess))
             }
             instructions.appendAll(translateExp(positions.last, position, st))
             instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
-            (ArrayAccess(position, oldAccess), instructions.toList)
-
-
-
-            // var inter = getNewIntermediate
-            // var currentPos = ArrayAccess(inter, access)
-            // val instructions = new ListBuffer[Instruction]
-            // for (pos <- position) {
-            //     // Translate the position, then store the array access in inter
-            //     val posInstrs = translateExp(pos, inter, st)
-            //     // The position is now in intermediate, 
-            //     instructions.appendAll(posInstrs)
-            //     instructions.append(UnaryOperation(A_Mov, currentPos, inter))
-            //     currentPos = ArrayAccess(inter, access)
-            //     access = inter
-            //     inter = getNewIntermediate
-            // }
-            // (currentPos, instructions.toList)
+            (ArrayAccess(position, oldAccess, false), instructions.toList)
         }
     }
 

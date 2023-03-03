@@ -41,22 +41,28 @@ class AssemblyTranslator {
     def translateValue(value: Value, allocator: RegisterAllocator): (List[AssInstr], Operand) = value match {
         case Stored(id) => allocator.getRegister(id)
         case Immediate(x) => (Nil, Imm(x))
-        case ArrayAccess(pos, Stored(id)) => {
+        case ArrayAccess(pos, Stored(id), formation) => {
             val (instrs, arrayToAccess) = allocator.getRegister(id)
             val (posInstrs, posLoc) = translateValue(pos, allocator)
-            // TODO: Multiply the offset by 4
-            usedFunctions.add(OutOfBound)
-            val errList = List(BinaryAssInstr(Mov, None, R2, posLoc),
-                BinaryAssInstr(Cmp, None, R2, Imm(0)),
-                BinaryAssInstr(Mov, Some(LT), R1, R2),
-                BranchLinked(OutOfBound, Some(LT)),
-                BinaryAssInstr(Ldr, None, LR, Offset(arrayToAccess, Imm(-4))),
-                BinaryAssInstr(Mov, None, Return, Imm(4)),
-                TernaryAssInstr(Mul, None, LR, LR, Return),
-                BinaryAssInstr(Cmp, None, R2, LR),
-                BinaryAssInstr(Mov, Some(GE), R1, R2),
-                BranchLinked(OutOfBound, Some(GE)))
-            return (instrs ++ posInstrs ++ errList, Offset(arrayToAccess, posLoc))
+            // Ensure that the array is not bounds checked during creation
+            val errList = new ListBuffer[AssInstr]
+            if (!formation){
+                usedFunctions.add(OutOfBound)
+                errList.appendAll(List(UnaryAssInstr(Push, None, R1),
+                    BinaryAssInstr(Mov, None, R3, posLoc),
+                    BinaryAssInstr(Cmp, None, R3, Imm(0)),
+                    BinaryAssInstr(Mov, Some(LT), R1, R3),
+                    BranchLinked(OutOfBound, Some(LT)),
+                    BinaryAssInstr(Ldr, None, LR, Offset(arrayToAccess, Imm(-4))),
+                    BinaryAssInstr(Mov, None, Return, Imm(4)),
+                    TernaryAssInstr(Mul, None, LR, LR, Return),
+                    BinaryAssInstr(Mov, None, R3, posLoc),
+                    BinaryAssInstr(Cmp, None, R3, LR),
+                    BinaryAssInstr(Mov, Some(GT), R1, R3),
+                    BranchLinked(OutOfBound, Some(GT)),
+                    UnaryAssInstr(Pop, None, R1)))
+            }
+            return (instrs ++ posInstrs ++ errList.toList, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
