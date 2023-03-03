@@ -400,7 +400,6 @@ _errNull:
             }
             case CallFunction(function) => {
                 instructionBuilder.append("bl wacc_" + function)
-                instructionBuilder.append(".ltorg")
             }
         }
         return instructionBuilder

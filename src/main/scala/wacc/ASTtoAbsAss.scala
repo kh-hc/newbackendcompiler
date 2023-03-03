@@ -19,8 +19,10 @@ class AbstractTranslator {
         return Program(body, functions)
     }
 
-    def translateFunction(func: FunctionUnit): Function
-        = Function(func.id.id, translateStat(func.body), func.params.paramlist.map(p => Stored(func.symbolTable.get.lookupRecursiveID(p.id.id))))
+    def translateFunction(func: FunctionUnit): Function = {
+        func.params.paramlist.map(p => func.body.symbolTable.get.setAssignedId(p.id.id))
+        Function(func.id.id, translateStat(func.body), func.params.paramlist.map(p => Stored(func.symbolTable.get.lookupRecursiveID(p.id.id))))
+    }
 
     def translateMain(stat: StatementUnit): List[Instruction] = translateStat(stat)
 

@@ -39,7 +39,9 @@ class AssemblyTranslator {
 
     // TODO: Deal with arrays, pairs and strings properly
     def translateValue(value: Value, allocator: RegisterAllocator): (List[AssInstr], Operand) = value match {
-        case Stored(id) => allocator.getRegister(id)
+        case Stored(id) => {
+            allocator.getRegister(id)
+        }
         case Immediate(x) => (Nil, Imm(x))
         case ArrayAccess(pos, Stored(id), formation) => {
             val (instrs, arrayToAccess) = allocator.getRegister(id)

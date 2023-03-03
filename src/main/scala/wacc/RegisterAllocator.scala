@@ -1,5 +1,7 @@
 package wacc
 
+import parsley.registers
+
 
 
 class RegisterAllocator() {
@@ -164,7 +166,8 @@ class RegisterAllocator() {
         pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
+            pushInstr.append(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
+            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, IPC))
         }
         val popInstr = ListBuffer[AssInstr]()
         for (reg <- usedEverRegisters) {
@@ -173,7 +176,8 @@ class RegisterAllocator() {
         }
         val revPop = popInstr.reverse
         if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
+            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, IPC))
+            revPop.prepend(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
         }
         //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
