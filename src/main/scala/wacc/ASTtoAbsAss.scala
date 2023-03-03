@@ -1,8 +1,5 @@
 package wacc
 
-import scala.collection.mutable.ListBuffer
-import parsley.internal.deepembedding.backend.Unary
-
 class AbstractTranslator {
     import scala.collection.mutable.ListBuffer
     import assemblyAbstractStructure._

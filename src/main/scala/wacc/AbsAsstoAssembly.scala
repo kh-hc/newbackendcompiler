@@ -45,12 +45,29 @@ class AssemblyTranslator {
             val (instrs, arrayToAccess) = allocator.getRegister(id)
             val (posInstrs, posLoc) = translateValue(pos, allocator)
             // TODO: Multiply the offset by 4
-            return (instrs ++ posInstrs, Offset(arrayToAccess, posLoc))
+            usedFunctions.add(OutOfBound)
+            val errList = List(BinaryAssInstr(Mov, None, R2, posLoc),
+                BinaryAssInstr(Cmp, None, R2, Imm(0)),
+                BinaryAssInstr(Mov, Some(LT), R1, R2),
+                BranchLinked(OutOfBound, Some(LT)),
+                BinaryAssInstr(Ldr, None, LR, Offset(arrayToAccess, Imm(-4))),
+                BinaryAssInstr(Mov, None, Return, Imm(4)),
+                TernaryAssInstr(Mul, None, LR, LR, Return),
+                BinaryAssInstr(Cmp, None, R2, LR),
+                BinaryAssInstr(Mov, Some(GE), R1, R2),
+                BranchLinked(OutOfBound, Some(GE)))
+            return (instrs ++ posInstrs ++ errList, Offset(arrayToAccess, posLoc))
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
-            return (pairInstrs, Offset(p, Imm(pos match {case Fst => 0
-            case Snd => 4})))
+            usedFunctions.addOne(NullError)
+            usedFunctions.addOne(PrintS)
+            return (pairInstrs ++ 
+                    List(BinaryAssInstr(Cmp, None, p, Imm(0)), BranchLinked(NullError, Some(EQ))),
+                    Offset(p, Imm(pos match {
+                case Fst => 0
+                case Snd => 4
+            })))
         }
         case StringLiteral(value) => {
             val stringLabel = generateStringLabel(stringsCount)
