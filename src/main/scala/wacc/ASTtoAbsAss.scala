@@ -27,72 +27,84 @@ class AbstractTranslator {
     def translateMain(stat: StatementUnit): List[Instruction] = translateStat(stat)
 
     def translateStat(stat: StatementUnit): List[Instruction] = {
+        val instructions = new ListBuffer[Instruction]
         stat match {
         case SkipStat => List.empty
         case AssignStat(t, id, value) => {
             val (rightIntermediate, instrR) = translateRvalue(value, stat.symbolTable.get)
             stat.symbolTable.get.setAssignedId(id.id)
-            return instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, Stored(stat.symbolTable.get.lookupRecursiveID(id.id))))
+            instructions.appendAll(instrR)
+            instructions.append(UnaryOperation(A_Assign, rightIntermediate, Stored(stat.symbolTable.get.lookupRecursiveID(id.id))))
         }
         case ReassignStat(left, right) => {
             val (leftIntermediate, instrL) = translateLvalue(left, stat.symbolTable.get)
             val (rightIntermediate, instrR) = translateRvalue(right, stat.symbolTable.get)
-            return instrL ++ instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, leftIntermediate))
+            instructions.appendAll(instrL)
+            instructions.appendAll(instrR)
+            instructions.append(UnaryOperation(A_Assign, rightIntermediate, leftIntermediate))
         }
         case r: ReadStat => {
             val (dest, instr) = translateLvalue(r.value, stat.symbolTable.get)
-            return instr  :+  (r.readType.get match {
+            instructions.appendAll(instr)
+            instructions.append(r.readType.get match {
                 case IntSymbol => InbuiltFunction(A_ReadI, dest)
                 case CharSymbol => InbuiltFunction(A_ReadC, dest)
             })
         }
         case FreeStat(expr) => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Free, intermediate))
+            instructions.appendAll(translateExp(expr, intermediate, stat.symbolTable.get))
+            instructions.append(InbuiltFunction(A_Free, intermediate))
         }
         case ReturnStat(expr) => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Return, intermediate))
+            instructions.appendAll(translateExp(expr, intermediate, stat.symbolTable.get))
+            instructions.append(InbuiltFunction(A_Return, intermediate))
         }
         case ExitStat(expr) => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Exit, intermediate))
+            instructions.appendAll(translateExp(expr, intermediate, stat.symbolTable.get))
+            instructions.append(InbuiltFunction(A_Exit, intermediate))
         }
         case p: PrintStat => {
             val intermediate = getNewIntermediate
-            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
-                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
-                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
-                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
-                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
-                case ArraySymbol(CharSymbol) =>  List(InbuiltFunction(A_PrintCA, intermediate))
-                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
+            instructions.appendAll(translateExp(p.expr, intermediate, stat.symbolTable.get))
+            instructions.append(p.printType.get match{
+                case IntSymbol => InbuiltFunction(A_PrintI, intermediate)
+                case BoolSymbol => InbuiltFunction(A_PrintB, intermediate)
+                case CharSymbol => InbuiltFunction(A_PrintC, intermediate)
+                case StringSymbol => InbuiltFunction(A_PrintS, intermediate)
+                case ArraySymbol(CharSymbol) => InbuiltFunction(A_PrintCA, intermediate)
+                case a: Any => InbuiltFunction(A_PrintA, intermediate)
             })
         }
         case p: PrintlnStat => {
             val intermediate = getNewIntermediate
-            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
-                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
-                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
-                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
-                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
-                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintCA, intermediate))
-                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
-            }) ++ List(InbuiltFunction(A_Println, Null))
+            instructions.appendAll(translateExp(p.expr, intermediate, stat.symbolTable.get))
+            instructions.append (p.printType.get match{
+                case IntSymbol => (InbuiltFunction(A_PrintI, intermediate))
+                case BoolSymbol => (InbuiltFunction(A_PrintB, intermediate))
+                case CharSymbol => (InbuiltFunction(A_PrintC, intermediate))
+                case StringSymbol => (InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) => (InbuiltFunction(A_PrintCA, intermediate))
+                case a: Any => (InbuiltFunction(A_PrintA, intermediate))
+            })
+            instructions.append(InbuiltFunction(A_Println, Null))
         }
         case IfStat(cond, ifStat, elseStat) => {
             val intermediate = getNewIntermediate
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
-            return List(IfInstruction(Conditional(intermediate, conditions), translateStat(ifStat), translateStat(elseStat)))
+            instructions.append(IfInstruction(Conditional(intermediate, conditions), translateStat(ifStat), translateStat(elseStat)))
         }
         case WhileStat(cond, body) =>  {
             val intermediate = getNewIntermediate
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
-            return List(WhileInstruction(Conditional(intermediate, conditions), translateStat(body)))
+            instructions.append(WhileInstruction(Conditional(intermediate, conditions), translateStat(body)))
         }
-        case ScopeStat(body) => List(ScopeInstruction(translateStat(body)))
-        case SeqStat(statements) => statements.map(translateStat).flatten
+        case ScopeStat(body) => instructions.append(ScopeInstruction(translateStat(body)))
+        case SeqStat(statements) => instructions.appendAll(statements.map(translateStat).flatten)
     }
+    instructions.toList
 }
 
     def translateRvalue(value: Rvalue, st: SymbolTable): (Value, List[Instruction]) = value match {

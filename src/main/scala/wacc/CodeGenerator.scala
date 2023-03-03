@@ -483,6 +483,7 @@ _errNull:
                     case GT => constructGreaterThan(op1)
                     case GE => constructGreaterThanOrEqual(op1)
                     case LE => constructLessThanOrEqual(op1)
+                    case _ => 
                 })
             }
             case TernaryAssInstr(op, cond, op1, op2, op3) => {

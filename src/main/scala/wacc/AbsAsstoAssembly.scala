@@ -360,7 +360,7 @@ class AssemblyTranslator {
         val (srcInstr, srcOp) = translateValue(src, allocator)
         instructions.appendAll(srcInstr)
         instructions.appendAll(translateMov(srcOp, Return, allocator))
-        instructions.append(BranchLinked(PrintI, None))
+        instructions.append(BranchLinked(printType, None))
         instructions
     }
 
