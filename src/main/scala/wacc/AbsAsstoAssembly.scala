@@ -67,7 +67,6 @@ class AssemblyTranslator {
         }
         case PairAccess(pos, pair) => {
             val (pairInstrs, p) = translateValue(pair, allocator)
-            usedFunctions.addOne(ReadI)
             usedFunctions.addOne(NullError)
             usedFunctions.addOne(PrintS)
             return (pairInstrs ++ 
@@ -254,21 +253,13 @@ class AssemblyTranslator {
                 srcInstr ++ translateMov(Imm(8), Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, srcOp, allocator)
             }
             case A_ReadI => {
-                // usedFunctions.addOne(ReadI)
-                // usedFunctions.addOne(NullError)
-                // usedFunctions.addOne(PrintS)
+                usedFunctions.addOne(ReadI)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
-                // BinaryAssInstr(Cmp, None, srcOp, Imm(0))
-                // BranchLinked(NullError, Some(EQ))
                 BranchLinked(ReadI, None) +: translateMov(Return, srcOp, allocator)     
             }
             case A_ReadC => {
-                // usedFunctions.addOne(ReadC)
-                // usedFunctions.addOne(NullError)
-                // usedFunctions.addOne(PrintS)
+                usedFunctions.addOne(ReadC)
                 val (srcInstr, srcOp) = translateValue(src, allocator)
-                // BinaryAssInstr(Cmp, None, srcOp, Imm(0))
-                // BranchLinked(NullError, Some(EQ))
                 BranchLinked(ReadC, None) +: translateMov(Return, srcOp, allocator)
             }
             case A_Return => {
