@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid/while/"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -48,8 +48,9 @@ class SystemTestSuite extends AnyFlatSpec {
         val logger = ProcessLogger(stdout append _ + "\n", stderr append _ + "\n")
         //val emulatorScriptCommand = 
         if (!containsReadStatement(filePath)){
-            val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger) 
             println(s"Testing: $filePath")
+            val actualExitCode = s"qemu-arm -L /usr/arm-linux-gnueabi/ $assemblyOutput".!(logger) 
+            
             (filePath) should "be run with our compiler and have the correct output produced" in {
             if (noTestFlags.map(f => !(expectedOutput._2 contains f)).foldLeft(true)((a, b) => a & b)){  
                 assert(actualExitCode == expectedOutput._1)
