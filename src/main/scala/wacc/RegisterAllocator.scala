@@ -153,7 +153,10 @@ class RegisterAllocator() {
                     retrievalInstrs.addAll(instrs)
                     retrievalInstrs += BinaryAssInstr(Mov, None, newReg, reg)
                 } else {
-                    storage(arg) = Stored((numberOfArgs + 2 - count) * -1)
+                    val (instrs, newReg) = getRegister(arg)
+                    retrievalInstrs.addAll(instrs)
+                    retrievalInstrs += BinaryAssInstr(Ldr, None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4)))
+                    storage(arg) = Stored((numberOfArgs - count + 1) * -1)
                 }
                 count = count + 1
             }
@@ -179,14 +182,13 @@ class RegisterAllocator() {
             revPop.prepend(TernaryAssInstr(Add, None, SP, SP, IPC))
             revPop.prepend(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
         }
-        //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
+        revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))
         return (pushInstr.toList, revPop.toList)
     }
 
     def saveArgs(regs: List[Register]): (List[AssInstr], List[AssInstr]) = {
-        // TODO: Save these properly
         return (regs.map(r => UnaryAssInstr(Push, None, r)).toList, regs.map(r => UnaryAssInstr(Pop, None, r)).reverse.toList)
     }
 }
