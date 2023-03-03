@@ -24,7 +24,7 @@ object parser {
     /*
     Array element type parsed via an identifier and then with 0 or more "[expr]".
     */
-    private val arrayElem: Parsley[ArrayElem] = ArrayElem(identifier, many("[" *> expression <* "]"))
+    private val arrayElem: Parsley[ArrayElem] = attempt(ArrayElem(identifier, some("[" *> expression <* "]")))
         .label("Array element")
 
     /* 

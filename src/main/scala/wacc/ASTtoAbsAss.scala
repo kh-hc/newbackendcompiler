@@ -1,7 +1,9 @@
 package wacc
 
 class AbstractTranslator {
+    import scala.collection.mutable.ListBuffer
     import assemblyAbstractStructure._
+    import SymbolTypes._
     import abstractSyntaxTree._
     
     var intermediateCounter: Int = 0
@@ -34,9 +36,12 @@ class AbstractTranslator {
             val (rightIntermediate, instrR) = translateRvalue(right, stat.symbolTable.get)
             return instrL ++ instrR ++ List(UnaryOperation(A_Assign, rightIntermediate, leftIntermediate))
         }
-        case ReadStat(value) => {
-            val (dest, instr) = translateLvalue(value, stat.symbolTable.get)
-            return instr ++ List(InbuiltFunction(A_Read, dest))
+        case r: ReadStat => {
+            val (dest, instr) = translateLvalue(r.value, stat.symbolTable.get)
+            return instr  :+  (r.readType.get match {
+                case IntSymbol => InbuiltFunction(A_ReadI, dest)
+                case CharSymbol => InbuiltFunction(A_ReadC, dest)
+            })
         }
         case FreeStat(expr) => {
             val intermediate = getNewIntermediate
@@ -50,13 +55,26 @@ class AbstractTranslator {
             val intermediate = getNewIntermediate
             return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Exit, intermediate))
         }
-        case PrintStat(expr) => {
+        case p: PrintStat => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Print, intermediate))
+            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
+                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
+                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
+                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
+                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
+            })
         }
-        case PrintlnStat(expr) => {
+        case p: PrintlnStat => {
             val intermediate = getNewIntermediate
-            return translateExp(expr, intermediate, stat.symbolTable.get) ++ List(InbuiltFunction(A_Println, intermediate))
+            return translateExp(p.expr, intermediate, stat.symbolTable.get) ++ (p.printType.get match{
+                case IntSymbol => List(InbuiltFunction(A_PrintI, intermediate))
+                case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
+                case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
+                case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintS, intermediate))
+                case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
+            }) ++ List(InbuiltFunction(A_Println, Null))
         }
         case IfStat(cond, ifStat, elseStat) => {
             val intermediate = getNewIntermediate
@@ -78,10 +96,14 @@ class AbstractTranslator {
             val array = getNewIntermediate
             var assignInstrs: List[Instruction] = List.empty
             for (i <- 0 to (value.length - 1)) {
-                val indexValue = ArrayAccess(List(Immediate(i)), array)
+                val indexValue = ArrayAccess(Immediate(i * 4), array, true)
                 assignInstrs = assignInstrs ++ translateExp(value(i), indexValue, st)
             }
-            return (array, List(UnaryOperation(A_ArrayCreate, Immediate(value.length), array)) ++ assignInstrs)
+            // Remember to store the length in the array
+            // We malloc an area of length + 1, store length in 0, then return the array address as 4
+            (array, List(UnaryOperation(A_ArrayCreate, Immediate((value.length + 1)* 4), array),
+                UnaryOperation(A_Mov, Immediate(value.length), ArrayAccess(Immediate(0), array, true)),
+                BinaryOperation(A_Add, array, Immediate(4), array)) ++ assignInstrs)
         }
         case NewPair(exprLeft, exprRight) => {
             val pair = getNewIntermediate
@@ -100,40 +122,64 @@ class AbstractTranslator {
                 argList = argList :+ argValue
                 argInstrs = argInstrs ++ translateExp(e, argValue, st)
             }
-            return (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
+            (returnVal, argInstrs :+ FunctionCall(id.id, argList, returnVal))
         }
         case lvalue: Lvalue => translateLvalue(lvalue, st)
         case expr: Expr => {
             val intermediate = getNewIntermediate
-            return (intermediate, translateExp(expr, intermediate, st))
+            (intermediate, translateExp(expr, intermediate, st))
         }
     }
 
     def translateLvalue(value: Lvalue, st: SymbolTable): (Value, List[Instruction]) = value match {
         case PairElemFst(pairToDeref) => {
-            val (pair, instr) = translateLvalue(pairToDeref, st)
-            return (PairAccess(Snd, pair), instr)
-        }
-        case PairElemSnd(pairToDeref) => {
-            val (pair, instr) = translateLvalue(pairToDeref, st)
-            return (PairAccess(Snd, pair), instr)
-        }
-        case Identifier(id) => (Stored(st.lookupRecursiveID(id)), List.empty)
-        case ArrayElem(id, position) => {
-            var positions: List[Value] = List.empty
-            var instructions: List[Instruction] = List.empty
-            for (pos <- position) {
-                val inter = getNewIntermediate
-                positions = positions :+ inter
-                instructions = instructions ::: translateExp(pos, inter, st) 
+             val (pair, instr) = translateLvalue(pairToDeref, st)
+            pair match {
+            case d: DerefType => {
+                // Dereference the address to another reg
+                val intermediate = getNewIntermediate
+                (PairAccess(Fst, intermediate), instr :+ UnaryOperation(A_Mov, pair, intermediate))
             }
-            return (ArrayAccess(positions, Stored(st.lookupRecursiveID(id.id))), instructions)
+            case _ => (PairAccess(Fst, pair), instr)
+        }
+    }        
+        case PairElemSnd(pairToDeref) => {
+             val (pair, instr) = translateLvalue(pairToDeref, st)
+            pair match {
+            case d: DerefType => {
+                // Dereference the address to another reg
+                val intermediate = getNewIntermediate
+                (PairAccess(Snd, intermediate), instr :+ UnaryOperation(A_Mov, pair, intermediate))
+            }
+            case _ => (PairAccess(Snd, pair), instr)
+        }
+    }
+        case Identifier(id) => (Stored(st.lookupRecursiveID(id)), List.empty)
+        case ArrayElem(id, positions) => {
+            // TODO: Refactor dereference to work like pairs
+            val access = Stored(st.lookupRecursiveID(id.id))
+            val oldAccess = getNewIntermediate
+            val newAccess = getNewIntermediate
+            val position = getNewIntermediate
+            val multiplier = getNewIntermediate
+            val instructions = new ListBuffer[Instruction]
+            instructions.append(UnaryOperation(A_Mov, Immediate(4), multiplier))
+            instructions.append(UnaryOperation(A_Mov, access, oldAccess))
+            for(pos <- positions.dropRight(1)){
+                instructions.appendAll(translateExp(pos, position, st))
+                instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
+                instructions.append(UnaryOperation(A_Mov, ArrayAccess(position, oldAccess, false), newAccess))
+                instructions.append(UnaryOperation(A_Mov, newAccess, oldAccess))
+            }
+            instructions.appendAll(translateExp(positions.last, position, st))
+            instructions.append(BinaryOperation(A_Mul, position, multiplier, position))
+            (ArrayAccess(position, oldAccess, false), instructions.toList)
         }
     }
 
     def translateExp(ast: Expr, dest: Value, st: SymbolTable): List[Instruction] = {
         val newdest = getNewIntermediate
-        ast match {
+        return ast match {
             case Identifier(id) => List(UnaryOperation(A_Assign, Stored(st.lookupRecursiveID(id)), dest))
             case Add(exprLeft, exprRight) => translateExp(exprLeft, dest, st) ++ translateExp(exprRight, newdest, st) ++ List(BinaryOperation(A_Add, dest, newdest, dest))
             case Sub(exprLeft, exprRight) => translateExp(exprLeft, dest, st) ++ translateExp(exprRight, newdest, st) ++ List(BinaryOperation(A_Sub, dest, newdest, dest))
@@ -165,6 +211,5 @@ class AbstractTranslator {
             case PairLiteral => List(UnaryOperation(A_Assign, Null, dest))
             case ParenExpr(expr) => translateExp(expr, dest, st)
         }
-        return List.empty
     }
 }

@@ -163,11 +163,11 @@ class SemanticAnalyzer(file: String) {
                 }
                 return ()
             }
-            case ReadStat(value) => checkLvalue(value, symbolTable) match {
+            case r: ReadStat => checkLvalue(r.value, symbolTable) match {
                 // We can only read ints or chars
-                case IntSymbol => ()
-                case CharSymbol => ()
-                case default => errorStack += readError.err(value, default)(file) 
+                case IntSymbol => r.readType = Option(checkLvalue(r.value, symbolTable))
+                case CharSymbol => r.readType = Option(checkLvalue(r.value, symbolTable))
+                case default => errorStack += readError.err(r.value, default)(file) 
             }
             case FreeStat(expr) => checkExpression(expr, symbolTable) match {
                 // Makes sure that we are only freeing pairs or arrays
@@ -179,8 +179,8 @@ class SemanticAnalyzer(file: String) {
             }
             case ReturnStat(expr) => checkEvaluatesTo(expr, symbolTable, returnType)
             case ExitStat(expr) => checkEvaluatesTo(expr, symbolTable, IntSymbol)
-            case PrintStat(expr) => checkExpression(expr, symbolTable)
-            case PrintlnStat(expr) => checkExpression(expr, symbolTable)
+            case p: PrintStat => p.printType = Option(checkExpression(p.expr, symbolTable))
+            case p: PrintlnStat => p.printType = Option(checkExpression(p.expr, symbolTable))
             case IfStat(cond, ifStat, elseStat) => {
                 checkEvaluatesTo(cond, symbolTable, BoolSymbol)
                 val ifSymbols = new SymbolTable(Some(symbolTable))
