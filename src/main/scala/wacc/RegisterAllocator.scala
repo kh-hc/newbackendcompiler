@@ -164,11 +164,22 @@ class RegisterAllocator() {
 
     def generateBoilerPlate(): (List[AssInstr], List[AssInstr]) = {
         val pushInstr = ListBuffer[AssInstr]()
+        val (_,reg) = getRegister("temp")
+        val end = ListBuffer[AssInstr]()
         pushInstr.append(UnaryAssInstr(Push, None, LR))
         pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
-            pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
+            if (stackSize > 256) {
+                pushInstr.append(BranchUnconditional("0f"))
+                pushInstr.append(NewLabel("1"))
+                end.append(NewLabel("0"))
+                end.append(BinaryAssInstr(Ldr, None, reg, Imm(stackSize * 4)))
+                end.append(BranchUnconditional("1b"))
+                pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, reg))
+            } else {
+                pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, Imm(stackSize * 4)))
+            }
         }
         val popInstr = ListBuffer[AssInstr]()
         for (reg <- usedEverRegisters) {
@@ -177,11 +188,13 @@ class RegisterAllocator() {
         }
         val revPop = popInstr.reverse
         if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, Imm(stackSize * 4)))
+            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, reg))
+            revPop.prepend(BinaryAssInstr(Ldr, None, reg, Imm(stackSize * 4)))
         }
         //revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))
+        revPop.appendAll(end)
         return (pushInstr.toList, revPop.toList)
     }
 
