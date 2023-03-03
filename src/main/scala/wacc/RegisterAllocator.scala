@@ -67,7 +67,6 @@ class RegisterAllocator() {
         if (registerMap.contains(registerToFree)) {
             val variableToStore = registerMap.get(registerToFree)
             registerMap.remove(registerToFree)
-            println(s"Storing $variableToStore from $registerToFree")
             stackMap.get(variableToStore.get) match {
                 case Some(Stored(x)) =>{
                     freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * x))))
@@ -93,7 +92,6 @@ class RegisterAllocator() {
     }
 
     private def load(name: String, register: Register, offset: Int): List[AssInstr] = {
-        println(s"Loading $name to $register")
         store(name, register)
         List(BinaryAssInstr(Ldr, None, register, Offset(FP, Imm(-(4 * offset)))))
     }

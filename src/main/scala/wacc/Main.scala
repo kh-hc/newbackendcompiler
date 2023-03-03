@@ -24,17 +24,6 @@ object Main {
                         val intermediateTranslator = new AbstractTranslator()
                         val finalTranslator = new AssemblyTranslator()
                         val intermediateTranslation = intermediateTranslator.translate(x)
-                        intermediateTranslation.main.map(i => i match{
-                            case assemblyAbstractStructure.WhileInstruction(cond, body) => {
-                                println("Condition: ")
-                                cond.conditions.map(println)
-                                println(s"Value: ${cond.value}")
-                                println("Body")
-                                body.map(println)
-                                println("End")
-                            }
-                            case a: Any => println(a)
-                        })
                         val (assembly, inbuilts, funcs, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
                         buildAssembly(assembly, args.head, inbuilts.toSet, funcs, stringLabelMap.toMap)
                         sys.exit(0)

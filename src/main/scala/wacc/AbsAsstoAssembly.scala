@@ -24,8 +24,6 @@ class AssemblyTranslator {
         val assembly = new ListBuffer[AssInstr]
         instructions.foreach(i => assembly.appendAll(translateInstruction(i, allocator)))
         val (prefix, suffix) = allocator.generateBoilerPlate()
-        println("Allocations: ")
-        allocator.stackMap.map(println)
         return Block(Label("main"), prefix ++ (assembly.toList :+ BinaryAssInstr(Mov, None, Return, Imm(0))) ++ suffix)
     }
 
@@ -157,7 +155,6 @@ class AssemblyTranslator {
                 case A_Ord => translateMov(R1, destAssembly, allocator)
                 case A_ArrayCreate => translateMov(R1, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
                 case A_Assign => {
-                    println(s"Assigning $src to $dst using $R1 and $destAssembly")
                     translateMov(R1, destAssembly, allocator)
                 }
                 case A_Mov => translateMov(R1, destAssembly, allocator)
