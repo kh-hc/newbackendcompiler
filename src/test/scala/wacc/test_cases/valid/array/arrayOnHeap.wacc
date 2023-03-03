@@ -13,18 +13,13 @@ begin
   int[][] arrs = [dummy_arr, dummy_arr] ;
   int i = 0;
   while i < 2 do
-    println i ;
     int[] arr = [i] ;
-    println arr ;
     arrs[i] = arr ;
-    println arrs[i] ;
     i = i + 1
   done;
-  println "Exited loop" ;
+
   # should have different addresses
   println arrs[0] == arrs[1];
-  println arrs[0] ;
-  println "Accessing this area" ;
   # should have different values
   println arrs[0][0];
   println arrs[1][0]

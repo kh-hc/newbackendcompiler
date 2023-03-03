@@ -179,9 +179,7 @@ class AssemblyTranslator {
                 case A_Chr => translateMov(R1, destAssembly, allocator)
                 case A_Ord => translateMov(R1, destAssembly, allocator)
                 case A_ArrayCreate => translateMov(R1, Return, allocator) ++ List(BranchLinked(Malloc, None)) ++ translateMov(Return, destAssembly, allocator)
-                case A_Assign => {
-                    translateMov(R1, destAssembly, allocator)
-                }
+                case A_Assign => translateMov(R1, destAssembly, allocator)
                 case A_Mov => translateMov(R1, destAssembly, allocator)
             }
             srcInstr ++ destInstr ++ finalInstrs
@@ -215,6 +213,14 @@ class AssemblyTranslator {
                 val (srcInstr, srcOp) = translateValue(src, allocator)
                 srcInstr ++ translateMov(srcOp, Return, allocator) :+
                 BranchLinked(PrintA, None)
+            }
+            case A_PrintCA => {
+                usedFunctions.addOne(PrintCA)
+                usedFunctions.addOne(PrintC)
+                usedFunctions.addOne(OutOfBound)
+                val (srcInstr, srcOp) = translateValue(src, allocator)
+                srcInstr ++ translateMov(srcOp, Return, allocator) :+
+                BranchLinked(PrintCA, None)
             }
             case A_Println => {
                 usedFunctions.addOne(PrintLn)
@@ -346,7 +352,6 @@ class AssemblyTranslator {
             }
             case (Label(label), _) => List(BinaryAssInstr(Ldr, None, dstAss, srcAss))
             case (Offset(srcReg, srcOffset), Offset(dstReg, dstOffset))=> {
-                // Annoying
                 Nil
             }
             case (Offset(reg, offset), o) => {
@@ -356,8 +361,7 @@ class AssemblyTranslator {
                     }
                     case r: Register => {
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset)),
-                            BinaryAssInstr(Mov, None, o, accessReg))
+                        accessInstr ++ List(BinaryAssInstr(Ldr, None, accessReg, Offset(reg, offset))) ++ translateMov(accessReg, o, allocator)
                     }
                     case _ => Nil
                 }
@@ -367,8 +371,8 @@ class AssemblyTranslator {
                     case Offset(derefReg, derefOffset) => Nil
                     case r: Register => {
                         val (accessInstr, accessReg) = allocator.getNewAccessRegister(r)
-                        accessInstr ++ List(BinaryAssInstr(Mov, None, accessReg, o),
-                            BinaryAssInstr(Str, None, o, Offset(reg, offset)))
+                        accessInstr ++ translateMov(o, accessReg, allocator) ++
+                            List(BinaryAssInstr(Str, None, accessReg, Offset(reg, offset)))
                     }
                     case _ => Nil
                 }

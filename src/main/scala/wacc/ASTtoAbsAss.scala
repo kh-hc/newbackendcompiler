@@ -65,6 +65,7 @@ class AbstractTranslator {
                 case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
                 case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
                 case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) =>  List(InbuiltFunction(A_PrintCA, intermediate))
                 case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
             })
         }
@@ -75,7 +76,7 @@ class AbstractTranslator {
                 case BoolSymbol => List(InbuiltFunction(A_PrintB, intermediate))
                 case CharSymbol => List(InbuiltFunction(A_PrintC, intermediate))
                 case StringSymbol => List(InbuiltFunction(A_PrintS, intermediate))
-                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintS, intermediate))
+                case ArraySymbol(CharSymbol) => List(InbuiltFunction(A_PrintCA, intermediate))
                 case a: Any => List(InbuiltFunction(A_PrintA, intermediate))
             }) ++ List(InbuiltFunction(A_Println, Null))
         }

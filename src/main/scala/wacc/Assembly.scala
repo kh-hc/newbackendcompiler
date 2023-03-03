@@ -61,6 +61,7 @@ object assemblyCode {
     case object PrintC extends InBuilt
     case object PrintS extends InBuilt
     case object PrintA extends InBuilt
+    case object PrintCA extends InBuilt
     case object PrintLn extends InBuilt
     case object ReadI extends InBuilt
     case object ReadC extends InBuilt

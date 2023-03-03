@@ -10,6 +10,14 @@
 # Program:
 
 begin
+  int f(char[] u) is
+    int i = 0;
+    while (i < len u) do
+      print u[i] ; 
+      i = i + 1
+    done ;
+    return 0
+  end
   char[] s = ['h','i','!'];
-  println s
+  int z = call f(s)
 end
