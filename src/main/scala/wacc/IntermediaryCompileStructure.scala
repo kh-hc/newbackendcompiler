@@ -12,14 +12,15 @@ object IntermediaryCompileStructure {
     case object PointerType extends IntermediateType
 
     sealed trait Value
-    case class Stored(id: String) extends Value
-    case class Immediate(value: Int) extends Value
+    sealed trait BaseValue extends Value
+    case class Immediate(value: Int) extends BaseValue
+    case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
+    case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
+    
     case class StringLiteral(value: String) extends Value
-    case object Null extends Value
-
+    case class Access(pointer: Stored, access: BaseValue) extends Value
 
     sealed trait Instr
-    
     case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value)
     case class UnaryOperation(operator: AssemblyUOperator, src: Value, dest: Value)
     case class InbuiltFunction(operator: AssemblyIOperator, src: Value) extends Instr
@@ -29,11 +30,7 @@ object IntermediaryCompileStructure {
     case class WhileInstruction(condition: Conditional, body: List[Instr]) extends Instr
     case class ScopeInstruction(body: List[Instr]) extends Instr
 
-    case class Conditional(value: Value, conditions: List[Instr])
-
-    sealed trait PairPos
-    case object Fst extends PairPos
-    case object Snd extends PairPos
+    case class Conditional(value: BaseValue, conditions: List[Instr])
 
     sealed trait AssemblyUOperator
     sealed trait AssemblyBOperator

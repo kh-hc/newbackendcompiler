@@ -109,7 +109,7 @@ object abstractSyntaxTree {
     sealed trait MathExpr extends BinaryOp
     sealed trait LogicExpr extends BinaryOp
     sealed trait EqExpr extends BinaryOp
-    sealed trait CmpExpr extends EqExpr
+    sealed trait CmpExpr extends BinaryOp
     case class Div(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr
     case class Mod(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr
     case class Mul(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr
