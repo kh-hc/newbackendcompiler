@@ -358,10 +358,26 @@ class SemanticAnalyzer(file: String) {
                 left = Some(l)
                 right = Some(r)
             }
+            case GreaterOrEqualThan(l, r) => {
+                left = Some(l)
+                right = Some(r)
+            }
+            case GreaterThan(l, r) => {
+                left = Some(l)
+                right = Some(r)
+            }
+            case LessOrEqualThan(l, r) => {
+                left = Some(l)
+                right = Some(r)
+            }
+            case LessThan(l, r) => {
+                left = Some(l)
+                right = Some(r)
+            }
         }
         val exprType = checkExpression(left.get, st)
         checkEvaluatesTo(right.get, st, exprType)
-        exprType
+        BoolSymbol
     }
 
     def checkOrderExpr(e: CmpExpr, st: SymbolTable): SymbolType = {
