@@ -17,6 +17,7 @@ object assemblyAbstractStructure {
     case class FunctionCall(functionName: String, args: List[Value], returnTo: Value) extends Instruction
 
     case class IfInstruction(condition: Conditional, ifInstructions: List[Instruction], elseInstructions: List[Instruction]) extends Instruction
+    case class IfNoElseInstruction(condition: Conditional, ifInstructions: List[Instruction]) extends Instruction
     case class WhileInstruction(condition: Conditional, body: List[Instruction]) extends Instruction
     case class ScopeInstruction(body: List[Instruction]) extends Instruction
 

@@ -106,7 +106,7 @@ object parser {
         <|> ExitStat("exit" *> expression).label("exit")
         <|> PrintStat("print" *> expression).label("print")
         <|> PrintlnStat("println" *> expression).label("println")
-        <|> IfStat("if" *> expression, "then" *> statement, "else" *> statement <* "fi").label("if statement")
+        <|> IfStat("if" *> expression, "then" *> statement, option("else" *> statement) <* "fi").label("if statement")
         <|> WhileStat("while" *> expression, "do" *> statement <* "done").label("while")
         <|> ScopeStat("begin" *> statement <* "end").label("new scope")
     )
@@ -212,7 +212,7 @@ object parser {
         */
         case WhileStat(_, body) => endsInRet(body)
         case ScopeStat(body) => endsInRet(body)
-        case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && endsInRet(elseStat)
+        case IfStat(_, ifStat, elseStat) => endsInRet(ifStat) && elseStat.fold {true} { x => endsInRet(x) } 
         case SeqStat(statements) => endsInRet(statements.last)
         case ExitStat(expr) => true
         case ReturnStat(expr) => true
