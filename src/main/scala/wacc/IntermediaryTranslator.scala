@@ -114,6 +114,7 @@ class IntermediaryTranslator {
     }
 
     def translateCondition(expr: Expr): Conditional = {
+        println(expr)
         expr match {
             case Equal(l, r) => translateCondExp(l, r, A_EQ)
             case NotEqual(l, r) => translateCondExp(l, r, A_NEQ)
@@ -127,6 +128,14 @@ class IntermediaryTranslator {
                 val lb = new ListBuffer[Instr]
                 translateExpression(e, lb)
                 Conditional(A_Not, lb.toList)
+            }
+            case Identifier(id) => {
+                val (name, t) = expr.symbolTable.get.lookupRecursiveID(id)
+                val transt = translateType(t)
+                transt match {
+                    case BoolType => Conditional(Stored(name,transt), Nil)
+                    case _ => throw new Exception("Invalid condition passed through")
+                }
             }
             case _ => throw new Exception("Invalid condition passed through")
         }
@@ -164,13 +173,13 @@ class IntermediaryTranslator {
                 val elseBuffer = new ListBuffer[Instr]()
                 translateStatement(ifBody, ifBuffer)
                 translateStatement(elseBody, elseBuffer)
-                IfInstruction(condition, ifBuffer.toList, elseBuffer.toList)
+                l += IfInstruction(condition, ifBuffer.toList, elseBuffer.toList)
             }
             case WhileStat(cond, body) => {
                 val condition = translateCondition(cond)
                 val bodyBuffer = new ListBuffer[Instr]()
                 translateStatement(body, bodyBuffer)
-                WhileInstruction(condition, bodyBuffer.toList)
+                l += WhileInstruction(condition, bodyBuffer.toList)
             }
             case PrintStat(expr) => {
                 val bv = translateExpression(expr, l)

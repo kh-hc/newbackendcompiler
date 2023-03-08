@@ -260,89 +260,92 @@ class SemanticAnalyzer(file: String) {
         }
     }
 
-    def checkExpression(expr: Expr, st: SymbolTable): SymbolType = expr match {
-        case IntExpr(_) => {
-            expr.tiepe = Some(IntSymbol)
-            IntSymbol
-        }
-        case BoolExpr(_) => {
-            expr.tiepe = Some(BoolSymbol)
-            BoolSymbol
-        }
-        case CharExpr(_) => {
-            expr.tiepe = Some(CharSymbol)
-            CharSymbol
-        }
-        case StrExpr(_) => {
-            expr.tiepe = Some(StringSymbol)
-            StringSymbol
-        }
-        case Identifier(id) => st.lookupRecursive(id) match {
-            // If we can't find the identifer, log an error but then continue the analysis with an amibiguous symbol
-            case None => {
-                errorStack += undefinedVar.err(expr.asInstanceOf[Identifier])(file) 
-                AmbiguousSymbol
+    def checkExpression(expr: Expr, st: SymbolTable): SymbolType = { 
+        expr.symbolTable = Some(st)
+        expr match {
+            case IntExpr(_) => {
+                expr.tiepe = Some(IntSymbol)
+                IntSymbol
             }
-            case Some(value) => {
-                expr.tiepe = Some(value)
-                value
+            case BoolExpr(_) => {
+                expr.tiepe = Some(BoolSymbol)
+                BoolSymbol
             }
-        }
-        case ArrayElem(id, positions) => {
-            val arrayType: SymbolType = st.lookupRecursive(id.id) match {
-                case Some(value) => value
+            case CharExpr(_) => {
+                expr.tiepe = Some(CharSymbol)
+                CharSymbol
+            }
+            case StrExpr(_) => {
+                expr.tiepe = Some(StringSymbol)
+                StringSymbol
+            }
+            case Identifier(id) => st.lookupRecursive(id) match {
+                // If we can't find the identifer, log an error but then continue the analysis with an amibiguous symbol
                 case None => {
-                    errorStack += undefinedVar.err(id)(file) 
-                    return AmbiguousSymbol
-                }
-            }
-            expr.tiepe = Some(arrayType)
-            positions.map(p => checkEvaluatesTo(p, st, IntSymbol))
-            // Makes sure that the array types match fully, and logs an error if not
-            try {
-                derefType(arrayType, positions.length)
-            } catch {
-                case e: Exception => {
-                    errorStack += derefErrE.err(expr)(file) 
+                    errorStack += undefinedVar.err(expr.asInstanceOf[Identifier])(file) 
                     AmbiguousSymbol
                 }
+                case Some(value) => {
+                    expr.tiepe = Some(value)
+                    value
+                }
             }
+            case ArrayElem(id, positions) => {
+                val arrayType: SymbolType = st.lookupRecursive(id.id) match {
+                    case Some(value) => value
+                    case None => {
+                        errorStack += undefinedVar.err(id)(file) 
+                        return AmbiguousSymbol
+                    }
+                }
+                expr.tiepe = Some(arrayType)
+                positions.map(p => checkEvaluatesTo(p, st, IntSymbol))
+                // Makes sure that the array types match fully, and logs an error if not
+                try {
+                    derefType(arrayType, positions.length)
+                } catch {
+                    case e: Exception => {
+                        errorStack += derefErrE.err(expr)(file) 
+                        AmbiguousSymbol
+                    }
+                }
+            }
+            case ParenExpr(e) => {
+                val ex = checkExpression(e, st)
+                expr.tiepe = Some(ex)
+                ex
+            }
+            case ChrOp(e) => {
+                checkEvaluatesTo(e, st, IntSymbol)
+                expr.tiepe = Some(CharSymbol)
+                CharSymbol
+            }
+            case LenOp(e)  => {
+                checkEvaluatesTo(e, st, ArraySymbol(AmbiguousSymbol))
+                expr.tiepe = Some(IntSymbol)
+                IntSymbol
+            }
+            case NegateOp(e)  => {
+                checkEvaluatesTo(e, st, IntSymbol)
+                expr.tiepe = Some(IntSymbol)
+                IntSymbol
+            }
+            case NotOp(e)  => {
+                checkEvaluatesTo(e, st, BoolSymbol)
+                expr.tiepe = Some(BoolSymbol)
+                BoolSymbol
+            }
+            case OrdOp(e)  => {
+                checkEvaluatesTo(e, st, CharSymbol)
+                expr.tiepe = Some(IntSymbol)
+                IntSymbol
+            }
+            case m: MathExpr => checkMathExpr(m, st)
+            case c: CmpExpr => checkOrderExpr(c, st)
+            case e: EqExpr => checkEqualExpr(e, st)
+            case l: LogicExpr => checkBoolExpr(l, st)
+            case PairLiteral => PairLiteralSymbol
         }
-        case ParenExpr(e) => {
-            val ex = checkExpression(e, st)
-            expr.tiepe = Some(ex)
-            ex
-        }
-        case ChrOp(e) => {
-            checkEvaluatesTo(e, st, IntSymbol)
-            expr.tiepe = Some(CharSymbol)
-            CharSymbol
-        }
-        case LenOp(e)  => {
-            checkEvaluatesTo(e, st, ArraySymbol(AmbiguousSymbol))
-            expr.tiepe = Some(IntSymbol)
-            IntSymbol
-        }
-        case NegateOp(e)  => {
-            checkEvaluatesTo(e, st, IntSymbol)
-            expr.tiepe = Some(IntSymbol)
-            IntSymbol
-        }
-        case NotOp(e)  => {
-            checkEvaluatesTo(e, st, BoolSymbol)
-            expr.tiepe = Some(BoolSymbol)
-            BoolSymbol
-        }
-        case OrdOp(e)  => {
-            checkEvaluatesTo(e, st, CharSymbol)
-            expr.tiepe = Some(IntSymbol)
-            IntSymbol
-        }
-        case m: MathExpr => checkMathExpr(m, st)
-        case c: CmpExpr => checkOrderExpr(c, st)
-        case e: EqExpr => checkEqualExpr(e, st)
-        case l: LogicExpr => checkBoolExpr(l, st)
-        case PairLiteral => PairLiteralSymbol
     }
 
     def checkEqualExpr(e: EqExpr, st: SymbolTable): SymbolType = {

@@ -21,6 +21,9 @@ object Main {
                         sa.getErrors().map(e =>  println(e))
                         sys.exit(200)
                     } else {
+                        val translator = new IntermediaryTranslator()
+                        val translated = translator.translate(x)
+                        println(translated)
                         sys.exit(0)
                     }
                 }

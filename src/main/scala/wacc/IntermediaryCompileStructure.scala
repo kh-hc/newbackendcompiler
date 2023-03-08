@@ -14,7 +14,7 @@ object IntermediaryCompileStructure {
     sealed trait Value
     sealed trait BaseValue extends Value
     case class Immediate(value: Int) extends BaseValue
-    case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
+    case class Stored(id: String, tiepe: IntermediateType) extends BaseValue with Condition
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
     case class StringLiteral(value: String) extends BaseValue
