@@ -95,9 +95,11 @@ object abstractSyntaxTree {
     sealed trait Expr5 extends Expr6
     sealed trait Expr6 extends Expr
 
+    sealed trait CondExp extends Expr
+
     // Unary Operators
     sealed trait UnaryOp
-    case class NotOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
+    case class NotOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp with CondExp
     case class NegateOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
     case class LenOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
     case class OrdOp(expr: Expr0)(val pos: (Int, Int)) extends Expr0 with UnaryOp
@@ -107,9 +109,9 @@ object abstractSyntaxTree {
     sealed trait BinaryOp extends ASTNode
 
     sealed trait MathExpr extends BinaryOp
-    sealed trait LogicExpr extends BinaryOp
-    sealed trait EqExpr extends BinaryOp
-    sealed trait CmpExpr extends BinaryOp
+    sealed trait LogicExpr extends CondExp with BinaryOp
+    sealed trait EqExpr extends CondExp with BinaryOp
+    sealed trait CmpExpr extends CondExp with BinaryOp
     case class Div(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr
     case class Mod(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr
     case class Mul(exprLeft: Expr1, exprRight: Expr0)(val pos: (Int, Int)) extends Expr1 with MathExpr

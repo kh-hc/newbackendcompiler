@@ -60,28 +60,28 @@ class SymbolTable(val parent: Option[SymbolTable]) {
         symbolType
     }
 
-    def lookupRecursiveID(name: String) : String = lookup(name) match {
+    def lookupRecursiveID(name: String) : (String, SymbolType) = lookup(name) match {
         case None => parent match {
             case Some(p) => p.lookupRecursiveID(name)
-            case None => ""
+            case None => ("", NoReturn)
         }
         case Some(st) => {
             if (st.allocated){
-                (name + unique_id)
+                (unique_id + name, st)
             } else {
                 parent match{
                     case Some(p) => {
                         p.lookupRecursiveID(name) match{
-                            case "" => {
+                            case ("", NoReturn) => {
                                 st.allocated = true
-                                (name + unique_id)
+                                (unique_id + name, st)
                             }
-                            case s: String => s
+                            case a: Any => a
                         }
                     }
                     case None => {
                         st.allocated = true
-                        (name + unique_id)
+                        (unique_id + name, st)
                     }
                 }
             }

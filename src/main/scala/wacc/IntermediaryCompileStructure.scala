@@ -1,8 +1,8 @@
 package wacc
 
 object IntermediaryCompileStructure {
-    case class Program(main: List[Instr], functions: List[Function])
-    case class Function(id: String, body: List[Instr], args: List[Stored])
+    case class Program(main: List[Instr], functions: List[WaccFunction])
+    case class WaccFunction(id: String, body: List[Instr], args: List[Stored])
 
     sealed trait IntermediateType
     case object IntType extends IntermediateType
@@ -17,12 +17,12 @@ object IntermediaryCompileStructure {
     case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
-    case class StringLiteral(value: String) extends Value
-    case class Access(pointer: Stored, access: BaseValue) extends Value
+    case class StringLiteral(value: String) extends BaseValue
+    case class Access(pointer: BaseValue, access: BaseValue) extends Value
 
     sealed trait Instr
-    case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value)
-    case class UnaryOperation(operator: AssemblyUOperator, src: Value, dest: Value)
+    case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value) extends Instr
+    case class UnaryOperation(operator: AssemblyUOperator, src: Value, dest: Value) extends Instr
     case class InbuiltFunction(operator: AssemblyIOperator, src: Value) extends Instr
     case class FunctionCall(functionName: String, args: List[Value], returnTo: Value) extends Instr
 
@@ -30,41 +30,36 @@ object IntermediaryCompileStructure {
     case class WhileInstruction(condition: Conditional, body: List[Instr]) extends Instr
     case class ScopeInstruction(body: List[Instr]) extends Instr
 
-    case class Conditional(value: BaseValue, conditions: List[Instr])
+    case class Conditional(cond: Condition, body: List[Instr])
 
     sealed trait AssemblyUOperator
     sealed trait AssemblyBOperator
     sealed trait AssemblyIOperator
+    sealed trait Condition
      
     case object A_Add extends AssemblyBOperator
     case object A_Sub extends AssemblyBOperator
     case object A_Mul extends AssemblyBOperator
     case object A_Div extends AssemblyBOperator
     case object A_Mod extends AssemblyBOperator
-    case object A_And extends AssemblyBOperator
-    case object A_Or extends AssemblyBOperator
-    case object A_GT extends AssemblyBOperator
-    case object A_GTE extends AssemblyBOperator
-    case object A_LT extends AssemblyBOperator
-    case object A_LTE extends AssemblyBOperator
-    case object A_EQ extends AssemblyBOperator
-    case object A_NEQ extends AssemblyBOperator
-    case object A_Not extends AssemblyUOperator
+    case object A_Cmp extends AssemblyUOperator // Unary operation where src = src1, dest = src2 
+    case object A_And extends AssemblyBOperator with Condition
+    case object A_Or extends AssemblyBOperator with Condition
+    case object A_GT extends AssemblyBOperator with Condition
+    case object A_GTE extends AssemblyBOperator with Condition
+    case object A_LT extends AssemblyBOperator with Condition
+    case object A_LTE extends AssemblyBOperator with Condition
+    case object A_EQ extends AssemblyBOperator with Condition
+    case object A_NEQ extends AssemblyBOperator with Condition
+    case object A_Not extends AssemblyUOperator with Condition
     case object A_Neg  extends AssemblyUOperator
     case object A_Len extends AssemblyUOperator with AssemblyIOperator
     case object A_Chr extends AssemblyUOperator
     case object A_Ord extends AssemblyUOperator
     case object A_Mov extends AssemblyUOperator
-    case object A_PrintI extends AssemblyIOperator
-    case object A_PrintC extends AssemblyIOperator
-    case object A_PrintB extends AssemblyIOperator
-    case object A_PrintS extends AssemblyIOperator
-    case object A_PrintA extends AssemblyIOperator
-    case object A_PrintCA extends AssemblyIOperator
-    case object A_Println extends AssemblyIOperator
+    case object A_Print extends AssemblyIOperator
     case object A_Assign extends AssemblyUOperator
-    case object A_ReadI extends AssemblyIOperator
-    case object A_ReadC extends AssemblyIOperator
+    case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
     case object A_Exit extends AssemblyIOperator
