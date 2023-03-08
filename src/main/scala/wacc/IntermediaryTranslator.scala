@@ -143,8 +143,15 @@ class IntermediaryTranslator {
     def translateStatement(st: StatementUnit, l: ListBuffer[Instr]): Unit = {
         st match {
             case SkipStat => 
-            case AssignStat(t, id, value) => 
-            case ReassignStat(left, right) => 
+            case AssignStat(t, id, value) => {
+                val intermediate = st.symbolTable.get.lookupRecursiveID(id.id)
+                translateRValueInto(value, Stored(intermediate._1, translateType(intermediate._2)), l)
+                st.symbolTable.get.setAssignedId(id.id)
+            }
+            case ReassignStat(left, right) => {
+                val leftInter = translateLValue(left, l)
+                translateRValueInto(right, leftInter, l)
+            }
             case ScopeStat(body) => translateStatement(body, l)
             case ExitStat(value) => {
                 val bv = translateExpression(value, l)
