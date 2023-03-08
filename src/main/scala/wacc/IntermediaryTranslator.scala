@@ -1,7 +1,5 @@
 package wacc
 
-import com.sourcegraph.semanticdb_javac.Semanticdb
-
 class IntermediaryTranslator {
     import scala.collection.mutable.ListBuffer
     import abstractSyntaxTree._
@@ -213,7 +211,13 @@ class IntermediaryTranslator {
     }
 
     def translateRValueInto(rvalue: Rvalue, location: Value, list: ListBuffer[Instr]) = rvalue match {
-        case ArrayLiteral(pos) => 
+        case ArrayLiteral(value) => {
+            for (i <- 0 to (value.length - 1)) {
+                val indexValue = Access(Immediate(i * 4), location)
+                val e = translateExpression(value(i), list)
+                list += UnaryOperation(A_Mov, e, indexValue)
+            }
+        }
         case Call(id, args) => {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
             for (e <- args.args) {
@@ -224,7 +228,16 @@ class IntermediaryTranslator {
             list += funcCall
             funcCall
         }
-        case p: PairElem => 
+        case p: PairElem => getPairToValue(p, list)
+        case NewPair(el, er) => {
+            val fst = translateExpression(el, list)
+            val fstInd = Access(Immediate(0), location)
+            val snd = translateExpression(er, list)
+            val sndInd = Access(Immediate(4), location)
+            list += InbuiltFunction(A_PairCreate, location)
+            list += UnaryOperation(A_Mov, fst, fstInd)
+            list += UnaryOperation(A_Mov, snd, sndInd)
+        }
         case e: Expr => translateExpression(e, list)
     }
 }

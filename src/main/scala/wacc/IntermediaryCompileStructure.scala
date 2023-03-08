@@ -18,7 +18,7 @@ object IntermediaryCompileStructure {
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
     case class StringLiteral(value: String) extends BaseValue
-    case class Access(pointer: BaseValue, access: BaseValue) extends Value
+    case class Access(pointer: BaseValue, access: Value) extends Value
 
     sealed trait Instr
     case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value) extends Instr
