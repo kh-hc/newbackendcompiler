@@ -1,5 +1,7 @@
 package wacc
 
+import com.sourcegraph.semanticdb_javac.Semanticdb
+
 class IntermediaryTranslator {
     import scala.collection.mutable.ListBuffer
     import abstractSyntaxTree._
@@ -7,6 +9,8 @@ class IntermediaryTranslator {
     import SymbolTypes._
 
     var intermediateCounter: Int = 0
+
+    val pairElemSize = 4
 
     def getNewIntermediate(tiepe: IntermediateType): IntermediateValue = {
         intermediateCounter = intermediateCounter + 1
@@ -77,7 +81,7 @@ class IntermediaryTranslator {
                 val dereference = getNewIntermediate(PointerType)
                 val position = translateExpression(pos, lb)
                 lb += BinaryOperation(A_Mul, position, Immediate(typeToSize(layerType)), position)
-                lb += UnaryOperation(A_Mov, Access(access, position), dereference)
+                lb += UnaryOperation(A_Load, Access(access, position), dereference)
                 access = dereference
             }
             access
@@ -105,9 +109,9 @@ class IntermediaryTranslator {
     }
 
     def translateUnaryExp(e: Expr, lb: ListBuffer[Instr], tiepe: IntermediateType, op: AssemblyUOperator): BaseValue = {
-        val edoardo = translateExpression(e, lb)
+        val ex = translateExpression(e, lb)
         val dest = getNewIntermediate(tiepe)
-        lb += UnaryOperation(op, edoardo, dest)
+        lb += UnaryOperation(op, ex, dest)
         dest
     }
 
@@ -122,6 +126,7 @@ class IntermediaryTranslator {
             case Or(l, r) => translateCondExp(l, r, A_Or)
             case And(l, r) => translateCondExp(l, r, A_And)
             case NotOp(e) => {
+                val lb = new ListBuffer[Instr]
                 translateExpression(e, lb)
                 Conditional(A_Not, lb.toList)
             }
@@ -143,7 +148,10 @@ class IntermediaryTranslator {
             case AssignStat(t, id, value) => 
             case ReassignStat(left, right) => 
             case ScopeStat(body) => translateStatement(body, l)
-            case ExitStat(value) => 
+            case ExitStat(value) => {
+                val bv = translateExpression(value, l)
+                l += InbuiltFunction(A_Exit, bv)
+            }
             case FreeStat(value) => 
             case IfStat(cond, ifBody, elseBody) => {
                 val condition = translateCondition(cond)
@@ -159,22 +167,63 @@ class IntermediaryTranslator {
                 translateStatement(body, bodyBuffer)
                 WhileInstruction(condition, bodyBuffer.toList)
             }
-            case PrintStat(expr) => 
-            case PrintlnStat(expr) => 
-            case ReadStat(value) => 
-            case ReturnStat(expr) => 
+            case PrintStat(expr) => {
+                val bv = translateExpression(expr, l)
+                l += InbuiltFunction(A_Print, bv)
+            }
+            case PrintlnStat(expr) => {
+                val bv = translateExpression(expr, l)
+                l += InbuiltFunction(A_Println, bv)
+            }
+            case ReadStat(value) => {
+                val bv = translateLValue(value, l)
+                l += InbuiltFunction(A_Read, bv)
+            }
+            case ReturnStat(expr) => {
+                val bv = translateExpression(expr, l)
+                l += InbuiltFunction(A_Return, bv)
+            }
             case SeqStat(stats) => stats.map(stat => translateStatement(stat, l))
         }
     }
 
-    def translateLValue(lvalue: Lvalue, lb: ListBuffer[Instr]) = lvalue match {
-        case p: PairElem => 
+    def translateLValue(lvalue: Lvalue, lb: ListBuffer[Instr]): Value = lvalue match {
+        case p: PairElem => getPairToValue(p, lb)
         case e: Expr => translateExpression(e, lb)
+    }
+
+    def getPairToValue(p: PairElem, lb: ListBuffer[Instr]): Value = {
+        val basePair = p match {
+            case PairElemFst(pair: Lvalue) => pair 
+            case PairElemSnd(pair: Lvalue) => pair
+        }
+        translateLValue(basePair, lb) match {
+            case b: BaseValue => Access(b, pairAccessLocation(p))
+            case a: Access => {
+                val intermediate = getNewIntermediate(PointerType)
+                lb += UnaryOperation(A_Load, a, intermediate)
+                Access(intermediate, pairAccessLocation(p))
+            }
+        }
+    }
+
+    def pairAccessLocation(p: PairElem): Immediate = p match {
+        case PairElemFst(_) => Immediate(0) 
+        case PairElemSnd(_) => Immediate(pairElemSize)
     }
 
     def translateRValueInto(rvalue: Rvalue, location: Value, list: ListBuffer[Instr]) = rvalue match {
         case ArrayLiteral(pos) => 
-        case Call(id, args) => 
+        case Call(id, args) => {
+            val argList: ListBuffer[Value] = new ListBuffer[Value]()
+            for (e <- args.args) {
+                val argValue = getNewIntermediate(translateType(e.tiepe.get))
+                argList += argValue
+            }
+            val funcCall = FunctionCall(id.id, argList.toList, location)
+            list += funcCall
+            funcCall
+        }
         case p: PairElem => 
         case e: Expr => translateExpression(e, list)
     }

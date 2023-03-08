@@ -57,7 +57,9 @@ object IntermediaryCompileStructure {
     case object A_Chr extends AssemblyUOperator
     case object A_Ord extends AssemblyUOperator
     case object A_Mov extends AssemblyUOperator
+    case object A_Load extends AssemblyUOperator
     case object A_Print extends AssemblyIOperator
+    case object A_Println extends AssemblyIOperator
     case object A_Assign extends AssemblyUOperator
     case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
