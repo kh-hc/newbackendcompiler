@@ -1,4 +1,4 @@
-package wacc
+package wacc.Archive
 
 object AssemblyInstructions {
     sealed trait Operand

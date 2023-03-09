@@ -1,6 +1,6 @@
 package wacc
 
-object AssemblyIR {
+object assemblyIR {
     sealed trait Operand
 
     sealed trait Register extends Operand
@@ -30,6 +30,9 @@ object AssemblyIR {
     case class Label(label: String) extends Operand
     case class Offset(reg: Operand, offset: Operand) extends Operand
     case class ASR(x: Integer) extends Operand
+
+    val ir_true = Imm(1)
+    val ir_false = Imm(0)
 
     sealed trait Type
     case object Byte extends Type

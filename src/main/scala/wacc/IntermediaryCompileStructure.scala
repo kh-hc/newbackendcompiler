@@ -1,6 +1,6 @@
 package wacc
 
-object IntermediaryCompileStructure {
+object intermediaryCompileStructure {
     case class Program(main: List[Instr], functions: List[WaccFunction])
     case class WaccFunction(id: String, body: List[Instr], args: List[Stored])
 
@@ -14,11 +14,14 @@ object IntermediaryCompileStructure {
     sealed trait Value
     sealed trait BaseValue extends Value
     case class Immediate(value: Int) extends BaseValue
-    case class Stored(id: String, tiepe: IntermediateType) extends BaseValue with Condition
+    case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
     case class StringLiteral(value: String) extends BaseValue
     case class Access(pointer: BaseValue, access: Value) extends Value
+
+    val a_true = Immediate(1)
+    val a_false = Immediate(0)
 
     sealed trait Instr
     case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value) extends Instr
@@ -60,12 +63,9 @@ object IntermediaryCompileStructure {
     case object A_Load extends AssemblyUOperator
     case object A_Print extends AssemblyIOperator
     case object A_Println extends AssemblyIOperator
-    case object A_Assign extends AssemblyUOperator
     case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
     case object A_Malloc extends AssemblyIOperator with AssemblyUOperator
     case object A_Exit extends AssemblyIOperator
-    case object A_ArrayCreate extends AssemblyIOperator with AssemblyUOperator// src: Length, dst: Addr - depreciated (?)
-    case object A_PairCreate extends AssemblyIOperator // src: Addr - depreciated (?)
 }

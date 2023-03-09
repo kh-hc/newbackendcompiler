@@ -3,7 +3,7 @@ package wacc
 class IntermediaryTranslator {
     import scala.collection.mutable.ListBuffer
     import abstractSyntaxTree._
-    import IntermediaryCompileStructure._
+    import intermediaryCompileStructure._
     import SymbolTypes._
 
     var intermediateCounter: Int = 0
@@ -125,14 +125,17 @@ class IntermediaryTranslator {
             case And(l, r) => translateCondExp(l, r, A_And)
             case NotOp(e) => {
                 val lb = new ListBuffer[Instr]
-                translateExpression(e, lb)
-                Conditional(A_Not, lb.toList)
+                val value = translateExpression(e, lb)
+                lb += UnaryOperation(A_Cmp, value, a_false)
+                Conditional(A_EQ, lb.toList)
             }
             case Identifier(id) => {
                 val (name, t) = expr.symbolTable.get.lookupRecursiveID(id)
                 val transt = translateType(t)
                 transt match {
-                    case BoolType => Conditional(Stored(name,transt), Nil)
+                    case BoolType => {
+                        Conditional(A_EQ, List(UnaryOperation(A_Cmp, Stored(name, transt), a_true)))
+                    }
                     case _ => throw new Exception("Invalid condition passed through")
                 }
             }
@@ -158,7 +161,14 @@ class IntermediaryTranslator {
             }
             case ReassignStat(left, right) => {
                 val leftInter = translateLValue(left, l)
-                translateRValueInto(right, leftInter, l)
+                leftInter match {
+                    case b: BaseValue => translateRValueInto(right, leftInter, l)
+                    case a: Access => {
+                        val intermediate = getNewIntermediate(PointerType)
+                        translateRValueInto(right, intermediate, l)
+                        l += UnaryOperation(A_Load, intermediate, leftInter)
+                    }
+                }
             }
             case ScopeStat(body) => translateStatement(body, l)
             case ExitStat(value) => {
@@ -250,7 +260,6 @@ class IntermediaryTranslator {
                 val e = translateExpression(value(i), list)
                 list += UnaryOperation(A_Load, e, indexValue)
             }
-
         }
         case Call(id, args) => {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
@@ -268,9 +277,9 @@ class IntermediaryTranslator {
             val fstInd = Access(Immediate(0), location)
             val snd = translateExpression(er, list)
             val sndInd = Access(Immediate(defaultIntSize), location)
-            list += InbuiltFunction(A_Malloc, location)
-            list += UnaryOperation(A_Mov, fst, fstInd)
-            list += UnaryOperation(A_Mov, snd, sndInd)
+            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), location)
+            list += UnaryOperation(A_Load, fst, fstInd)
+            list += UnaryOperation(A_Load, snd, sndInd)
         }
         case e: Expr => translateExpression(e, list)
     }

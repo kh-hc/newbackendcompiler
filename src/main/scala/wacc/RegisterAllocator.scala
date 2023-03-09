@@ -1,13 +1,10 @@
 package wacc
 
-import parsley.registers
-
-
-
 class RegisterAllocator() {
-    import assemblyCode._
+    import assemblyIR._
     import scala.collection.mutable.{Map, ListBuffer, Stack, Queue, Set}
     import Storage._
+
     var stackSize: Int = 0
     var storage = Map.empty[String, Storage]
     var stackMap = Map.empty[String, Stored]
@@ -19,11 +16,21 @@ class RegisterAllocator() {
     availableRegisters.pushAll(generalRegisters)
     val usedRegisters = Queue[Register]()
     val usedEverRegisters = Set[Register]()
-    val newThisScope = Set[Register]()
+    val reserveStack = Stack[Register]()
 
     // Note that this is heavily unoptimized
-    def getRegister(name: String): (List[AssInstr], Register) = storage.get(name) match{
-        case Some(s) => s match {
+    def getRegister(name: String): (List[AssInstr], Register) = {
+      val (instrs, reg) = getReg(name)
+      reserveStack.push(reg)
+      (instrs, reg)
+    }
+    
+    def clearReserve() = {
+      reserveStack.popAll()
+    }
+
+    def getReg(name: String): (List[AssInstr], Register) = storage.get(name) match{
+      case Some(s) => s match {
             case Reg(r) => {
                 (Nil, r)
             }
@@ -58,7 +65,6 @@ class RegisterAllocator() {
             freeingInstructions.appendAll(addValueToStack(registerToFree))
         }
         val reg = availableRegisters.pop()
-        newThisScope.add(reg)
         usedEverRegisters.add(reg)
         usedRegisters.enqueue(reg)
         return (freeingInstructions.toList, reg)
@@ -71,12 +77,12 @@ class RegisterAllocator() {
             registerMap.remove(registerToFree)
             stackMap.get(variableToStore.get) match {
                 case Some(Stored(x)) =>{
-                    freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * x))))
+                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * x))))
                     storage(variableToStore.get) = Stored(x)
                 }
                 case None =>{
                     stackSize += 1
-                    freeingInstructions += BinaryAssInstr(Str, None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
+                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
                     stackMap(variableToStore.get) = Stored(stackSize)
                     storage(variableToStore.get) = Stored(stackSize)
                 }
@@ -95,7 +101,7 @@ class RegisterAllocator() {
 
     private def load(name: String, register: Register, offset: Int): List[AssInstr] = {
         store(name, register)
-        List(BinaryAssInstr(Ldr, None, register, Offset(FP, Imm(-(4 * offset)))))
+        List(BinaryAssInstr(Ldr(Word), None, register, Offset(FP, Imm(-(4 * offset)))))
     }
 
     def getState(): Map[Register, String] = registerMap.clone()
@@ -155,7 +161,7 @@ class RegisterAllocator() {
                 } else {
                     val (instrs, newReg) = getRegister(arg)
                     retrievalInstrs.addAll(instrs)
-                    retrievalInstrs += BinaryAssInstr(Ldr, None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4)))
+                    retrievalInstrs += BinaryAssInstr(Ldr(Word), None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4)))
                     storage(arg) = Stored((numberOfArgs - count + 1) * -1)
                 }
                 count = count + 1
@@ -169,7 +175,7 @@ class RegisterAllocator() {
         pushInstr.append(UnaryAssInstr(Push, None, FP))
         pushInstr.append(BinaryAssInstr(Mov, None, FP, SP))
         if (stackSize > 0) {
-            pushInstr.append(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
+            pushInstr.append(BinaryAssInstr(Ldr(Word), None, IPC, Imm(stackSize * 4)))
             pushInstr.append(TernaryAssInstr(Sub, None, SP, SP, IPC))
         }
         val popInstr = ListBuffer[AssInstr]()
@@ -180,7 +186,7 @@ class RegisterAllocator() {
         val revPop = popInstr.reverse
         if (stackSize > 0) {
             revPop.prepend(TernaryAssInstr(Add, None, SP, SP, IPC))
-            revPop.prepend(BinaryAssInstr(Ldr, None, IPC, Imm(stackSize * 4)))
+            revPop.prepend(BinaryAssInstr(Ldr(Word), None, IPC, Imm(stackSize * 4)))
         }
         revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
@@ -194,7 +200,7 @@ class RegisterAllocator() {
 }
 
 object Storage {
-    import assemblyCode._
+    import assemblyIR._
     sealed trait Storage
     case class Reg(reg: Register) extends Storage
     case class Stored(offset: Int) extends Storage
