@@ -64,7 +64,8 @@ object IntermediaryCompileStructure {
     case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
+    case object A_Malloc extends AssemblyIOperator with AssemblyUOperator
     case object A_Exit extends AssemblyIOperator
-    case object A_ArrayCreate extends AssemblyIOperator with AssemblyUOperator// src: Length, dst: Addr
-    case object A_PairCreate extends AssemblyIOperator // src: Addr
+    case object A_ArrayCreate extends AssemblyIOperator with AssemblyUOperator// src: Length, dst: Addr - depreciated (?)
+    case object A_PairCreate extends AssemblyIOperator // src: Addr - depreciated (?)
 }

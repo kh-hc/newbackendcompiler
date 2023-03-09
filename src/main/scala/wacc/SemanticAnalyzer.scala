@@ -279,10 +279,10 @@ class SemanticAnalyzer(file: String) {
                 expr.tiepe = Some(StringSymbol)
                 StringSymbol
             }
-            case Identifier(id) => st.lookupRecursive(id) match {
+            case id: Identifier => st.lookupRecursive(id.id) match {
                 // If we can't find the identifer, log an error but then continue the analysis with an amibiguous symbol
                 case None => {
-                    errorStack += undefinedVar.err(expr.asInstanceOf[Identifier])(file) 
+                    errorStack += undefinedVar.err(id)(file) 
                     AmbiguousSymbol
                 }
                 case Some(value) => {

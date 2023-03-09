@@ -8,7 +8,7 @@ class IntermediaryTranslator {
 
     var intermediateCounter: Int = 0
 
-    val pairElemSize = 4
+    val defaultIntSize = 4
 
     def getNewIntermediate(tiepe: IntermediateType): IntermediateValue = {
         intermediateCounter = intermediateCounter + 1
@@ -18,7 +18,6 @@ class IntermediaryTranslator {
     def translate(prog: WACCprogram) = {
         val listBuffer: ListBuffer[Instr] = new ListBuffer[Instr]()
         translateStatement(prog.stat, listBuffer)
-        
         Program(listBuffer.toList, prog.funcs.map(translateFunction))
     }
 
@@ -166,7 +165,10 @@ class IntermediaryTranslator {
                 val bv = translateExpression(value, l)
                 l += InbuiltFunction(A_Exit, bv)
             }
-            case FreeStat(value) => 
+            case FreeStat(value) => {
+                val bv = translateExpression(value, l)
+                l += InbuiltFunction(A_Free, bv)
+            }
             case IfStat(cond, ifBody, elseBody) => {
                 val condition = translateCondition(cond)
                 val ifBuffer = new ListBuffer[Instr]()
@@ -223,16 +225,32 @@ class IntermediaryTranslator {
 
     def pairAccessLocation(p: PairElem): Immediate = p match {
         case PairElemFst(_) => Immediate(0) 
-        case PairElemSnd(_) => Immediate(pairElemSize)
+        case PairElemSnd(_) => Immediate(defaultIntSize)
+    }
+
+    def getElementSize(t: Option[SymbolType]): Int = t match {
+        case None => defaultIntSize
+        case Some(value) => value match {
+            case CharSymbol => 1
+            case BoolSymbol => 1
+            case _ => defaultIntSize
+        }
     }
 
     def translateRValueInto(rvalue: Rvalue, location: Value, list: ListBuffer[Instr]) = rvalue match {
         case ArrayLiteral(value) => {
+            val arrayPointer = getNewIntermediate(PointerType)
+            val arrayLocSize = getElementSize(value.head.tiepe)
+            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize + arrayLocSize * value.length), arrayPointer)
+            UnaryOperation(A_Load, Immediate(value.length), arrayPointer)
+            BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
+
             for (i <- 0 to (value.length - 1)) {
-                val indexValue = Access(Immediate(i * 4), location)
+                val indexValue = Access(arrayPointer, Immediate(i * arrayLocSize))
                 val e = translateExpression(value(i), list)
-                list += UnaryOperation(A_Mov, e, indexValue)
+                list += UnaryOperation(A_Load, e, indexValue)
             }
+
         }
         case Call(id, args) => {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
@@ -249,8 +267,8 @@ class IntermediaryTranslator {
             val fst = translateExpression(el, list)
             val fstInd = Access(Immediate(0), location)
             val snd = translateExpression(er, list)
-            val sndInd = Access(Immediate(4), location)
-            list += InbuiltFunction(A_PairCreate, location)
+            val sndInd = Access(Immediate(defaultIntSize), location)
+            list += InbuiltFunction(A_Malloc, location)
             list += UnaryOperation(A_Mov, fst, fstInd)
             list += UnaryOperation(A_Mov, snd, sndInd)
         }
