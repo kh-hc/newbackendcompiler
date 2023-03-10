@@ -6,14 +6,29 @@ import parsley.{Success, Failure}
 import wacc.parser._
 import wacc.PeepholeOptimisation._
 import wacc.CodeGenerator._
+// import scala.io.Source
 
 class PeepholeOptimisationTests extends AnyFlatSpec {
 
     val validRootPath = "src/test/scala/wacc/test_cases/valid/"
 
-    ("valid/advanced/binarySortTree") should "have correct optimised code produced by the peephole optimiser" in {
-        val test = validRootPath + "advanced/binarySortTree.wacc"
-        compileAndOptimise(test)
+    test("basic/exit", "exit-1")
+    test("if", "if1")
+    test("while", "min")
+    test("variables", "charDeclaration")
+    test("expressions", "andExpr")
+    test("sequence", "intLeadingZeros")
+    test("array", "arrayIndexMayBeArrayIndex")
+    test("function/nested_functions", "fibonacciFullRec")
+    test("advanced", "binarySortTree")
+    test("advanced", "hashTable")
+    test("advanced", "ticTacToe")
+
+    def test(folder : String, fileName : String) {
+        (s"valid/$folder/$fileName") should "have correct optimised code produced by the peephole optimiser" in {
+            val test = validRootPath + folder + "/" + fileName + ".wacc"
+            compileAndOptimise(test)
+        }
     }
 
     def compileAndOptimise (fileName : String) = {
@@ -38,7 +53,8 @@ class PeepholeOptimisationTests extends AnyFlatSpec {
 
                     // Create the assembly for the version...
                     // with peephole optimisations
-                    buildAssembly(assemblyOptimised, fileName + "Optimised", inbuilts.toSet, funcsOptimised, stringLabelMap.toMap)
+                    val optimisedFileName = fileName.slice(0, fileName.length - 5) + "Optimised"
+                    buildAssembly(assemblyOptimised, optimisedFileName, inbuilts.toSet, funcsOptimised, stringLabelMap.toMap)
                     // without peephole optimisations
                     buildAssembly(assembly, fileName, inbuilts.toSet, funcs, stringLabelMap.toMap)
 
@@ -50,11 +66,5 @@ class PeepholeOptimisationTests extends AnyFlatSpec {
             }
         }
     }
-
-    def printPrettily (list : List[String]) {
-        for (item <- list) {
-            println(item)
-        }
-    }
-
+    
 }

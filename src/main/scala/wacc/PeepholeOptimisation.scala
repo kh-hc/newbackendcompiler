@@ -13,7 +13,6 @@ object PeepholeOptimisation {
         val assembly = intermediaryAssembly._1
         val funcs = intermediaryAssembly._2
         
-        // AssProg is a List[Block] by defintion, so can type cast
         val optimisedAssembly = optimise(assembly.blocks)
         val optimisedFuncs = optimise(funcs)
 
@@ -32,43 +31,65 @@ object PeepholeOptimisation {
         }
         return optimisedBlocks
     }
-    
-    /*
-    Actual function applying peephole optimisation on a Block of instructions
-    */
+
+
     def optimiseBlock (instructions : List[AssInstr]) : List[AssInstr] = {
         var optimisedInstructions = List[AssInstr]()
-        // var ignoreNextInstr = false
 
         var count = 0
+        val numOfInstr = instructions.length
         // Don't check the last instruction, as we check the current instruction with
         // respect to the instructions after it
-        while (count != (instructions.length - 2)) {
+        while (count != (numOfInstr - 2)) {
             val currInstr = instructions(count)
             val nextInstr = instructions(count + 1)
             (currInstr, nextInstr) match {
                 case (BinaryAssInstr(Mov, condCurr, op1Curr, op2Curr),
                     BinaryAssInstr(Mov, condNext, op1Next, op2Next)) => {
-                    // Discard instructions of the form Mov Rn Rn
-                    if (op1Curr != op2Curr) {
-                        // When we have the following, discard the second instruction:
-                        // Mov Rn Rm
-                        // Mov Rm Rn    OR   Mov Rn Rm
-                        if ((op1Curr == op1Next && op2Curr == op2Next)
-                            || op1Curr == op2Next && op2Curr == op1Next) {
-                            optimisedInstructions = optimisedInstructions :+ currInstr
-                            count = count + 1
-                            println(s"CurrInstr: $currInstr \nRemoving $nextInstr\n")
-                        }
-                        else {
-                            optimisedInstructions = optimisedInstructions :+ currInstr
-                        }
-                    }
+                    val updated = assessOptimality (optimisedInstructions, currInstr, nextInstr,
+                                                            op1Curr, op2Curr, op1Next, op2Next, count)
+                    optimisedInstructions = updated._1
+                    count = updated._2
+                    
+                }
+                case (BinaryAssInstr(Str, condCurr, op1Curr, op2Curr),
+                    BinaryAssInstr(Ldr, condNext, op1Next, op2Next)) => {
+                    val updated = assessOptimality (optimisedInstructions, currInstr, nextInstr,
+                                                            op1Curr, op2Curr, op1Next, op2Next, count)
+                    optimisedInstructions = updated._1
+                    count = updated._2
                 }
                 case default => optimisedInstructions = optimisedInstructions :+ currInstr
             }
             count = count + 1
         }
+        optimisedInstructions = optimisedInstructions :+ instructions(numOfInstr - 2)
+        optimisedInstructions = optimisedInstructions :+ instructions(numOfInstr - 1)
         return optimisedInstructions
+    }
+
+    def assessOptimality(optimisedInstructionsOld : List[AssInstr], currInstr : AssInstr, nextInstr : AssInstr,
+                        op1Curr : Operand, op2Curr : Operand, op1Next : Operand, op2Next : Operand, countOld : Int) : (List[AssInstr], Int) = {
+        var optimisedInstructions = optimisedInstructionsOld
+        var count = countOld
+        // Discard instructions of the form Mov Rn Rn
+        if (op1Curr != op2Curr) {
+            // When we have the following, discard the second instruction:
+            // Mov Rn Rm                  
+            // Mov Rn Rm    OR   Mov Rm Rn
+            // Also in the case
+            // Str Rn Rm
+            // Ldr Rn Rm    OR   Ldr Rm Rn
+            if ((op1Curr == op1Next && op2Curr == op2Next)
+                || op1Curr == op2Next && op2Curr == op1Next) {
+                optimisedInstructions = optimisedInstructions :+ currInstr
+                count = count + 1
+                // println(s"CurrInstr: $currInstr \nRemoving $nextInstr\n")
+            }
+            else {
+                optimisedInstructions = optimisedInstructions :+ currInstr
+            }
+        }
+        return (optimisedInstructions, count)
     }
 }
