@@ -24,12 +24,11 @@ object assemblyIR {
     case object PC extends ReservedRegister // AssProg counter
 
     val generalRegisters = Set(R4, R5, R6, R7, R8, R9, R10)
-    val argumentRegisters = List(Return, R1, R2, R3)
+    val argumentRegisters = Map(0 -> Return, 1 -> R1, 2 -> R2, 3 -> R3)
 
     case class Imm(x: Integer) extends Operand
     case class Label(label: String) extends Operand
-    case class Offset(reg: Operand, offset: Operand) extends Operand
-    case class ASR(x: Integer) extends Operand
+    case class Offset(reg: Operand, offset: Operand, tiepe: Type) extends Operand
 
     val ir_true = Imm(1)
     val ir_false = Imm(0)
@@ -80,6 +79,8 @@ object assemblyIR {
     case object NullError extends InBuilt
     case object Malloc extends InBuilt
     case object OutOfBound extends InBuilt
+    case object Ret extends InBuilt
+    case object Len extends InBuilt
     
     sealed trait AssInstr
     // General convention being dest src src1 ...

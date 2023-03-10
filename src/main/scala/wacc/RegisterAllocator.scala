@@ -77,12 +77,12 @@ class RegisterAllocator() {
             registerMap.remove(registerToFree)
             stackMap.get(variableToStore.get) match {
                 case Some(Stored(x)) =>{
-                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * x))))
+                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * x)), Word))
                     storage(variableToStore.get) = Stored(x)
                 }
                 case None =>{
                     stackSize += 1
-                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * stackSize))))
+                    freeingInstructions += BinaryAssInstr(Str(Word), None, registerToFree, Offset(FP, Imm(-(4 * stackSize)), Word))
                     stackMap(variableToStore.get) = Stored(stackSize)
                     storage(variableToStore.get) = Stored(stackSize)
                 }
@@ -101,7 +101,7 @@ class RegisterAllocator() {
 
     private def load(name: String, register: Register, offset: Int): List[AssInstr] = {
         store(name, register)
-        List(BinaryAssInstr(Ldr(Word), None, register, Offset(FP, Imm(-(4 * offset)))))
+        List(BinaryAssInstr(Ldr(Word), None, register, Offset(FP, Imm(-(4 * offset)), Word)))
     }
 
     def getState(): Map[Register, String] = registerMap.clone()
@@ -161,7 +161,7 @@ class RegisterAllocator() {
                 } else {
                     val (instrs, newReg) = getRegister(arg)
                     retrievalInstrs.addAll(instrs)
-                    retrievalInstrs += BinaryAssInstr(Ldr(Word), None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4)))
+                    retrievalInstrs += BinaryAssInstr(Ldr(Word), None, newReg, Offset(FP, Imm((numberOfArgs - count + 1) * 4), Word))
                     storage(arg) = Stored((numberOfArgs - count + 1) * -1)
                 }
                 count = count + 1

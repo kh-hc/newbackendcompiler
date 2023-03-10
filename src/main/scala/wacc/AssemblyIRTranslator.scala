@@ -6,14 +6,22 @@ class AssemblyIRTranslator {
   import scala.collection.mutable.{Map, ListBuffer, Set}
 
   val functionMap: Map[Label, Block] = Map.empty[Label, Block]
+  val stringLabelMap: Map[Label, String] = Map.empty[Label, String]
   val usedFunctions: Set[InBuilt] = Set.empty
   var labelCount: Int = 0
+  var stringLabelCount: Int = 0
+
   def generateLabel(): String = {
     val ret = s".L${labelCount.toString}"
     labelCount = labelCount + 1
     ret
   }
 
+  def generateStringLabel(): String = {
+    val ret = s".L.str${stringLabelCount.toString}"
+    stringLabelCount = stringLabelCount + 1
+    ret
+  }
 
   def translate(program: Program): AssProg = {
     val main = translateMain(program.main)
@@ -47,7 +55,7 @@ class AssemblyIRTranslator {
           lb += TernaryAssInstr(RightSub, None, dstOp, srcOp, Imm(0))
         }
         case A_Len => {
-          translateMove(Offset(R1, Imm(-4)), dstOp, lb)
+          translateMove(Offset(R1, Imm(-4), Word), dstOp, lb)
         }
         case A_Chr => {
            lb += BinaryAssInstr(Mov, None, dstOp, srcOp)
@@ -165,7 +173,6 @@ class AssemblyIRTranslator {
       val preIf = allocator.getState()
       val elseLabel = generateLabel()
       val endLabel = generateLabel()
-      //TODO: conditional operands???
       condition.body.map(i => translateInstruction(i, allocator, lb))
       val cond = translateCond(condition.cond)
       lb += Branch(elseLabel, Some(cond))
@@ -185,13 +192,43 @@ class AssemblyIRTranslator {
       lb.addAll(elseBuf)
     }
     case WhileInstruction(condition, body) => {
+      val preWhile = allocator.getState()
+      val condLabel = generateLabel()
+      val bodyLabel = generateLabel()
+      val endLabel = generateLabel()
+      val cond = translateCond(condition.cond)
+      lb += Branch(condLabel, None)
+      lb += NewLabel(bodyLabel)
+      body.map(i => translateInstruction(i, allocator, lb))
+      lb += NewLabel(condLabel)
+      condition.body.map(i => translateInstruction(i, allocator, lb))
+      Branch(bodyLabel, Some(cond))
+      lb += NewLabel(endLabel)
+      lb.addAll(allocator.reloadState(preWhile))
     }
     case FunctionCall(functionName, args, returnTo) => {
+      // Set arguments into the stack and then branch linked
+      for ((arg, i) <- args.zipWithIndex) {
+        val op = translateValue(arg, allocator, lb)
+        if (i < 4) {
+          translateMove(op, argumentRegisters(i), lb)
+        } else {
+          lb += UnaryAssInstr(Push, None, op)
+        }
+        allocator.clearReserve()
+      }
+      val returnOp = translateValue(returnTo, allocator, lb)
+      lb += Branch(functionName, None)
+      translateMove(Return, returnOp, lb)
     }
     case InbuiltFunction(operator, src) => {
+      val srcOp = translateValue(src, allocator, lb)
+      translateMove(srcOp, Return, lb)
+      val inbuilt = translateInbuilt(operator, src)
+      BranchLinked(inbuilt, None)
     }
     allocator.clearReserve()
-  }
+  } 
 
   def translateFunction(function: WaccFunction): Block = {
     val funcBuffer = new ListBuffer[AssInstr]()
@@ -205,44 +242,125 @@ class AssemblyIRTranslator {
     Block(Label(function.id), funcBuffer.toList)
   }
 
-  def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = {
-    value match {
-      case Access(pointer, access) => Imm(0)
+  def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = value match {
+      case Access(pointer, access, t) => {
+        val pointOp = translateValue(value, allocator, lb)
+        val accOp = translateValue(value, allocator, lb)
+        Offset(pointOp, accOp, translateType(t))
+      }
       case Immediate(value) => Imm(value)
-      case IntermediateValue(id, tiepe) => Imm(0)
-      case Stored(id, tiepe) => Imm(0)
-      case StringLiteral(value) => Imm(0)
-    }
+      case Character(value) => Imm(value)
+      case IntermediateValue(id, tiepe) => {
+        val (instrs, op) = allocator.getRegister(s"__$id")
+        lb.addAll(instrs)
+        op
+      }
+      case Stored(id, tiepe) => {
+        val (instrs, op) = allocator.getRegister(id)
+        lb.addAll(instrs)
+        op
+      }
+      case StringLiteral(value) => {
+        val stringLabel = generateStringLabel()
+        stringLabelMap.addOne((Label(stringLabel), value.flatMap(escapedChar)))
+        Label(stringLabel)
+      }
+  }
+
+  def translateType(tiepe: IntermediateType): Type = tiepe match {
+    case BoolType => Byte
+    case CharType => Byte
+    case _ => Word
+  }
+
+  def getTypeFromValue(value: Value): IntermediateType = value match {
+    case Access(pointer, access, t) => PointerType
+    case Immediate(value) => IntType
+    case Character(value) => CharType
+    case IntermediateValue(id, tiepe) => tiepe
+    case Stored(id, tiepe) => tiepe
+    case StringLiteral(value) => StringType
   }
 
   def translateMove(src: Operand, dst: Operand, lb: ListBuffer[AssInstr]) = {
     dst match {
       case Label(label) => throw new Exception("Warning, you're stupid") 
       case r: Register => src match {
-        case Label(label) =>
-        case r: Register =>
-        case Imm(x) => 
-        case Offset(reg, offset) =>
+        case Label(label) => BinaryAssInstr(Ldr(Word), None, dst, src)
+        case r: Register => BinaryAssInstr(Mov, None, dst, src)
+        case Imm(x) => {
+          if (x > 255 || x < -255) {
+            lb += BinaryAssInstr(Ldr(Word), None, dst, src)
+          } else {
+            lb += BinaryAssInstr(Mov, None, dst, src)
+          }
+        }
+        case Offset(reg, offset, t) => BinaryAssInstr(Ldr(t), None, dst, src)
       }
       case Imm(x) => throw new Exception("Imagine being this stupid")
-      case Offset(reg, offset) => src match {
-        case Label(label) =>
-        case r: Register =>
-        case Imm(x) => 
-        case Offset(reg, offset) =>
+      case Offset(reg, offset, t) => src match {
+        case Label(label) => BinaryAssInstr(Str(t), None, dst, src)
+        case r: Register => BinaryAssInstr(Str(t), None, dst, src)
+        case Imm(x) => {
+          if (x > 255 || x < 0) {
+            lb += BinaryAssInstr(Ldr(Word), None, Return, src)
+            lb += BinaryAssInstr(Str(t), None, dst, Return)
+          } else {
+            lb += BinaryAssInstr(Str(t), None, dst, src)
+          }
+        }
+        case Offset(reg, offset, t2) => {
+          BinaryAssInstr(Ldr(t2), None, Return, src)
+          BinaryAssInstr(Str(t), None, dst, Return)
+        }
       }
     }
   }
 
   def translateCond(cond: A_Condition): Condition = cond match {
-    case A_And => EQ
-    case A_Or => EQ
     case A_GT =>  GT
     case A_GTE => GE
     case A_LT => LT
     case A_LTE => LE
     case A_EQ => EQ
     case A_NEQ => NE
-    case A_Not => NE
+  }
+
+  def translateInbuilt(inbuilt: AssemblyIOperator, v: Value): InBuilt = inbuilt match {
+    case A_Exit => Exit
+    case A_Read => {
+      val vtype = getTypeFromValue(v)
+      vtype match {
+        case IntType => ReadI
+        case _ => ReadC
+      }
+    }
+    case A_Print => {
+      val vtype = getTypeFromValue(v)
+      vtype match {
+        case PointerType => PrintCA
+        case IntType => PrintI
+        case CharType => PrintC
+        case StringType => PrintS
+        case BoolType => PrintB
+      }
+    }
+    case A_Malloc => Malloc
+    case A_Println => PrintLn
+    case A_Len => Len
+    case A_Free => Free
+    case A_Return => Ret
+  }
+
+  def escapedChar(c: Char): String = c match {
+        case '"'  => "\\\""
+        case '\'' => "\\\'"
+        case '\\' => "\\\\"
+        case '\b' => "\\b"
+        case '\n' => "\\n"
+        case '\f' => "\\f"
+        case '\r' => "\\r"
+        case '\t' => "\\t"
+        case _    => String.valueOf(c)
   }
 }

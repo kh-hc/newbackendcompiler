@@ -22,8 +22,10 @@ object Main {
                         sys.exit(200)
                     } else {
                         val translator = new IntermediaryTranslator()
+                        val assembler = new AssemblyIRTranslator()
                         val translated = translator.translate(x)
-                        println(translated)
+                        val assembled = assembler.translate(translated)
+                        println(assembled)
                         sys.exit(0)
                     }
                 }

@@ -78,12 +78,12 @@ class IntermediaryTranslator {
                 val dereference = getNewIntermediate(PointerType)
                 val position = translateExpression(pos, lb)
                 lb += BinaryOperation(A_Mul, position, Immediate(typeToSize(layerType)), position)
-                lb += UnaryOperation(A_Load, Access(access, position), dereference)
+                lb += UnaryOperation(A_Load, Access(access, position, translateType(layerType)), dereference)
                 access = dereference
             }
             access
         }
-        case CharExpr(c) => Immediate(c.toInt)
+        case CharExpr(c) => Character(c.toInt)
         case IntExpr(i) => Immediate(i)
         case BoolExpr(b) => b match {
             case true => Immediate(1)
@@ -113,7 +113,6 @@ class IntermediaryTranslator {
     }
 
     def translateCondition(expr: Expr): Conditional = {
-        println(expr)
         expr match {
             case Equal(l, r) => translateCondExp(l, r, A_EQ)
             case NotEqual(l, r) => translateCondExp(l, r, A_NEQ)
@@ -121,8 +120,18 @@ class IntermediaryTranslator {
             case GreaterThan(l, r) => translateCondExp(l, r, A_GT)
             case LessOrEqualThan(l, r) => translateCondExp(l, r, A_LTE)
             case LessThan(l, r) => translateCondExp(l, r, A_LT)
-            case Or(l, r) => translateCondExp(l, r, A_Or)
-            case And(l, r) => translateCondExp(l, r, A_And)
+            case Or(l, r) => {
+                val lb = new ListBuffer[Instr]
+                val e = translateExpression(expr, lb)
+                lb += UnaryOperation(A_Cmp, e, a_true) 
+                Conditional(A_EQ, lb.toList)
+            }
+            case And(l, r) => {
+                val lb = new ListBuffer[Instr]
+                val e = translateExpression(expr, lb)
+                lb += UnaryOperation(A_Cmp, e, a_true) 
+                Conditional(A_EQ, lb.toList)
+            }
             case NotOp(e) => {
                 val lb = new ListBuffer[Instr]
                 val value = translateExpression(e, lb)
@@ -224,11 +233,11 @@ class IntermediaryTranslator {
             case PairElemSnd(pair: Lvalue) => pair
         }
         translateLValue(basePair, lb) match {
-            case b: BaseValue => Access(b, pairAccessLocation(p))
+            case b: BaseValue => Access(b, pairAccessLocation(p), PointerType)
             case a: Access => {
                 val intermediate = getNewIntermediate(PointerType)
                 lb += UnaryOperation(A_Load, a, intermediate)
-                Access(intermediate, pairAccessLocation(p))
+                Access(intermediate, pairAccessLocation(p), PointerType)
             }
         }
     }
@@ -256,7 +265,7 @@ class IntermediaryTranslator {
             BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
 
             for (i <- 0 to (value.length - 1)) {
-                val indexValue = Access(arrayPointer, Immediate(i * arrayLocSize))
+                val indexValue = Access(arrayPointer, Immediate(i * arrayLocSize), translateType(value.head.tiepe.get))
                 val e = translateExpression(value(i), list)
                 list += UnaryOperation(A_Load, e, indexValue)
             }
@@ -264,19 +273,18 @@ class IntermediaryTranslator {
         case Call(id, args) => {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
             for (e <- args.args) {
-                val argValue = getNewIntermediate(translateType(e.tiepe.get))
+                val argValue = translateExpression(e, list)
                 argList += argValue
             }
             val funcCall = FunctionCall(id.id, argList.toList, location)
             list += funcCall
-            funcCall
         }
         case p: PairElem => getPairToValue(p, list)
         case NewPair(el, er) => {
             val fst = translateExpression(el, list)
-            val fstInd = Access(Immediate(0), location)
+            val fstInd = Access(Immediate(0), location, PointerType)
             val snd = translateExpression(er, list)
-            val sndInd = Access(Immediate(defaultIntSize), location)
+            val sndInd = Access(Immediate(defaultIntSize), location, PointerType)
             list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), location)
             list += UnaryOperation(A_Load, fst, fstInd)
             list += UnaryOperation(A_Load, snd, sndInd)

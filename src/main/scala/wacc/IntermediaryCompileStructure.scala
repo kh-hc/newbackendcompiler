@@ -14,11 +14,12 @@ object intermediaryCompileStructure {
     sealed trait Value
     sealed trait BaseValue extends Value
     case class Immediate(value: Int) extends BaseValue
+    case class Character(value: Int) extends BaseValue
     case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
     case class StringLiteral(value: String) extends BaseValue
-    case class Access(pointer: BaseValue, access: Value) extends Value
+    case class Access(pointer: BaseValue, access: Value, tiepe: IntermediateType) extends Value
 
     val a_true = Immediate(1)
     val a_false = Immediate(0)
@@ -46,15 +47,15 @@ object intermediaryCompileStructure {
     case object A_Div extends AssemblyBOperator
     case object A_Mod extends AssemblyBOperator
     case object A_Cmp extends AssemblyUOperator // Unary operation where src = src1, dest = src2 
-    case object A_And extends AssemblyBOperator with A_Condition
-    case object A_Or extends AssemblyBOperator with A_Condition
+    case object A_And extends AssemblyBOperator
+    case object A_Or extends AssemblyBOperator
     case object A_GT extends AssemblyBOperator with A_Condition
     case object A_GTE extends AssemblyBOperator with A_Condition
     case object A_LT extends AssemblyBOperator with A_Condition
     case object A_LTE extends AssemblyBOperator with A_Condition
     case object A_EQ extends AssemblyBOperator with A_Condition
     case object A_NEQ extends AssemblyBOperator with A_Condition
-    case object A_Not extends AssemblyUOperator with A_Condition
+    case object A_Not extends AssemblyUOperator
     case object A_Neg  extends AssemblyUOperator
     case object A_Len extends AssemblyUOperator with AssemblyIOperator
     case object A_Chr extends AssemblyUOperator
