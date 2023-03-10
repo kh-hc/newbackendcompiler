@@ -47,6 +47,10 @@ object abstractSyntaxTree {
     case class ScopeStat(body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class SeqStat(statements: List[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
 
+    // Extension
+    case class SwitchStat(expr: Expr, cases: List[CaseStat])(val pos: (Int, Int)) extends StatementUnit
+    case class CaseStat(expr: Expr, body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
+
     sealed trait Lvalue extends ASTNode {
         val pos: (Int, Int)
     }
@@ -185,6 +189,9 @@ object abstractSyntaxTree {
     object WhileStat extends ParserBridgePos2[Expr, StatementUnit, WhileStat]
     object ScopeStat extends ParserBridgePos1[StatementUnit, ScopeStat]
     object SeqStat extends ParserBridgePos1[List[StatementUnit], SeqStat]
+    // Extension
+    object SwitchStat extends ParserBridgePos2[Expr, List[CaseStat], SwitchStat]
+    object CaseStat extends ParserBridgePos2[Expr, StatementUnit, CaseStat]
 
     object PairElemFst extends ParserBridgePos1[Lvalue, PairElemFst]
     object PairElemSnd extends ParserBridgePos1[Lvalue, PairElemSnd]

@@ -200,6 +200,18 @@ class SemanticAnalyzer(file: String) {
             case SeqStat(stats) => {
                 stats.map(s => checkStatement(s, symbolTable, returnType))
             }
+
+            case SwitchStat(expr, cases) => {
+                checkExpression(expr, symbolTable)
+                val caseSymbols = new SymbolTable(Some(symbolTable))
+                cases.foreach(c => checkStatement(c, caseSymbols, returnType))
+            }
+
+            case CaseStat(expr, body) => {
+                checkExpression(expr, symbolTable)
+                val bodySymbols = new SymbolTable(Some(symbolTable))
+                checkStatement(body, bodySymbols, returnType)
+            }
         }
     }
 

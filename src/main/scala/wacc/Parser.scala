@@ -94,6 +94,8 @@ object parser {
         .label("Statement")
         .explain("A statement can be either a list of statements or a singular statement")
 
+    private val caseList: Parsley[List[CaseStat]] =
+        manyUntil(CaseStat("case" *> expression, statement), "end")
 
     /*
     Our atomStatements are all statements apart from a sequence of statements.
@@ -110,6 +112,7 @@ object parser {
         <|> IfStat("if" *> expression, "then" *> statement, option("else" *> statement) <* "fi").label("if statement")
         <|> WhileStat("while" *> expression, "do" *> statement <* "done").label("while")
         <|> ScopeStat("begin" *> statement <* "end").label("new scope")
+        <|> SwitchStat("switch" *> expression, caseList).label("switch statement")
     )
         .label("Atomic Statement")
         .explain("An atomic statement can be 'skip', 'assignment', 'reassignment'," +

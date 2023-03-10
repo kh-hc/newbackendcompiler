@@ -20,7 +20,9 @@ object lexer {
                                 "return", "exit", "print", "println", "if", 
                                 "then", "else", "fi", "while", "do", "done", 
                                 "fst", "snd", "newpair", "call", "int", 
-                                "bool", "char", "string", "pair", "true", "false", "null" , "len", "ord", "chr"),
+                                "bool", "char", "string", "pair", "true", "false", "null" , "len", "ord", "chr",
+                                // extention types
+                                "switch","case"),
             hardOperators = Set("!", "-", "*", "/", "%",
                                 "+", ">", ">=", "<", "<=", "==", "!=", "&&", "||"),
         ),
