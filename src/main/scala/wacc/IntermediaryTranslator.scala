@@ -148,6 +148,14 @@ class IntermediaryTranslator {
                     case _ => throw new Exception("Invalid condition passed through")
                 }
             }
+            case BoolExpr(b: Boolean) => {
+                val lb = new ListBuffer[Instr]
+                lb += UnaryOperation(A_Cmp, b match {
+                    case true => a_true
+                    case false => a_false
+                }, a_true)
+                Conditional(A_EQ, lb.toList)
+            }
             case _ => throw new Exception("Invalid condition passed through")
         }
     }

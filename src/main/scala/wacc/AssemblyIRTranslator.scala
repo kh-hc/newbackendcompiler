@@ -244,8 +244,8 @@ class AssemblyIRTranslator {
 
   def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = value match {
       case Access(pointer, access, t) => {
-        val pointOp = translateValue(value, allocator, lb)
-        val accOp = translateValue(value, allocator, lb)
+        val pointOp = translateValue(pointer, allocator, lb)
+        val accOp = translateValue(access, allocator, lb)
         Offset(pointOp, accOp, translateType(t))
       }
       case Immediate(value) => Imm(value)

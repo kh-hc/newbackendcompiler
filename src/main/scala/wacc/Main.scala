@@ -25,7 +25,6 @@ object Main {
                         val assembler = new AssemblyIRTranslator()
                         val translated = translator.translate(x)
                         val (assembled, usedFunctions, functions, usedStrings) = assembler.translate(translated)
-                        println(assembled)
                         buildAssembly(assembled, args.head, usedFunctions.toSet, functions, usedStrings.toMap)
                         sys.exit(0)
                     }
