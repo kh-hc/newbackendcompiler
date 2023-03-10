@@ -94,7 +94,11 @@ class AbstractTranslator {
         case IfStat(cond, ifStat, elseStat) => {
             val intermediate = getNewIntermediate
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
-            instructions.append(IfInstruction(Conditional(intermediate, conditions), translateStat(ifStat), translateStat(elseStat)))
+            val elseInstructions: List[Instruction] = elseStat match {
+                case Some(stat) => translateStat(stat)
+                case None => List.empty
+            }
+            instructions.append(IfInstruction(Conditional(intermediate, conditions), translateStat(ifStat), elseInstructions))
         }
         case WhileStat(cond, body) =>  {
             val intermediate = getNewIntermediate

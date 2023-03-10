@@ -186,7 +186,7 @@ class SemanticAnalyzer(file: String) {
                 val ifSymbols = new SymbolTable(Some(symbolTable))
                 checkStatement(ifStat, ifSymbols, returnType)
                 val elseSymbols = new SymbolTable(Some(symbolTable))
-                checkStatement(elseStat, elseSymbols, returnType)
+                elseStat.foreach(s => checkStatement(s, elseSymbols, returnType))
             }
             case WhileStat(cond, body) => {
                 checkEvaluatesTo(cond, symbolTable, BoolSymbol)

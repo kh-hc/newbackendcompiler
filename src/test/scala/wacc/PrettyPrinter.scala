@@ -48,7 +48,7 @@ object PrettyPrinters {
                                                   "\nthen\n" +
                                                   prettyPrintStatement(ifStat) +
                                                   "\nelse\n" +
-                                                  prettyPrintStatement(elseStat) +
+                                                  elseStat.map(prettyPrintStatement).getOrElse("") +
                                                   "\nfi"}
       case ast.WhileStat(cond, body)      =>  {"while\n" +
                                                 prettyPrintExpr(cond) +

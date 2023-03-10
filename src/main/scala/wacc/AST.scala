@@ -42,7 +42,7 @@ object abstractSyntaxTree {
     }
     case class PrintStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit with PrintType
     case class PrintlnStat(expr: Expr)(val pos: (Int, Int)) extends StatementUnit with PrintType
-    case class IfStat(cond: Expr, ifStat: StatementUnit, elseStat: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
+    case class IfStat(cond: Expr, ifStat: StatementUnit, elseStat: Option[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
     case class WhileStat(cond: Expr, body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class ScopeStat(body: StatementUnit)(val pos: (Int, Int)) extends StatementUnit
     case class SeqStat(statements: List[StatementUnit])(val pos: (Int, Int)) extends StatementUnit
@@ -181,7 +181,7 @@ object abstractSyntaxTree {
     object ExitStat extends ParserBridgePos1[Expr, ExitStat]
     object PrintStat extends ParserBridgePos1[Expr, PrintStat]
     object PrintlnStat extends ParserBridgePos1[Expr, PrintlnStat]
-    object IfStat extends ParserBridgePos3[Expr, StatementUnit, StatementUnit, IfStat]
+    object IfStat extends ParserBridgePos3[Expr, StatementUnit, Option[StatementUnit], IfStat]
     object WhileStat extends ParserBridgePos2[Expr, StatementUnit, WhileStat]
     object ScopeStat extends ParserBridgePos1[StatementUnit, ScopeStat]
     object SeqStat extends ParserBridgePos1[List[StatementUnit], SeqStat]
