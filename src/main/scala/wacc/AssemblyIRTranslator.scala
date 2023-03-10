@@ -5,7 +5,7 @@ class AssemblyIRTranslator {
   import assemblyIR._
   import scala.collection.mutable.{Map, ListBuffer, Set}
 
-  val functionMap: Map[Label, Block] = Map.empty[Label, Block]
+  val functions: ListBuffer[Block] = new ListBuffer[Block]()
   val stringLabelMap: Map[Label, String] = Map.empty[Label, String]
   val usedFunctions: Set[InBuilt] = Set.empty
   var labelCount: Int = 0
@@ -23,11 +23,11 @@ class AssemblyIRTranslator {
     ret
   }
 
-  def translate(program: Program): AssProg = {
+  def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[Label,String]) = {
     val main = translateMain(program.main)
     val funcs = program.functions.map(translateFunction)
-    funcs.map(b => functionMap.addOne(b.label, b))
-    AssProg(main +: funcs)
+    funcs.map(b => functions.addOne(b))
+    (AssProg(main +: funcs), usedFunctions, functions.toList, stringLabelMap)
   }
 
   def translateMain(instrs: List[Instr]): Block = {

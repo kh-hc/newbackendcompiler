@@ -1,9 +1,9 @@
 package wacc
 
 import parser.parse
-import CodeGenerator.buildAssembly
 import parsley.{Success, Failure}
 import java.io.File
+import AssemblyGenerator.buildAssembly
 
 object Main {
     def main(args: Array[String]): Unit = {
@@ -24,8 +24,9 @@ object Main {
                         val translator = new IntermediaryTranslator()
                         val assembler = new AssemblyIRTranslator()
                         val translated = translator.translate(x)
-                        val assembled = assembler.translate(translated)
+                        val (assembled, usedFunctions, functions, usedStrings) = assembler.translate(translated)
                         println(assembled)
+                        buildAssembly(assembled, args.head, usedFunctions.toSet, functions, usedStrings.toMap)
                         sys.exit(0)
                     }
                 }
