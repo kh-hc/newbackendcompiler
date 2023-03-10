@@ -89,10 +89,7 @@ object assemblyIR {
     case class UnaryAssInstr(op: Opcode, cond: Option[Condition], op1: Operand) extends AssInstr
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
     case class BranchLinked(function: InBuilt, cond: Option[Condition]) extends AssInstr
-    sealed trait Branch extends AssInstr
-    case class BranchEq(function: String) extends Branch
-    case class BranchUnconditional(function: String) extends Branch
-    case class BranchNe(function: String) extends Branch
+    case class Branch(function: String, cond: Option[Condition]) extends AssInstr
     case class CallFunction(function: String) extends AssInstr
     case class NewLabel(label: String) extends AssInstr
 

@@ -33,12 +33,12 @@ object intermediaryCompileStructure {
     case class WhileInstruction(condition: Conditional, body: List[Instr]) extends Instr
     case class ScopeInstruction(body: List[Instr]) extends Instr
 
-    case class Conditional(cond: Condition, body: List[Instr])
+    case class Conditional(cond: A_Condition, body: List[Instr])
 
     sealed trait AssemblyUOperator
     sealed trait AssemblyBOperator
     sealed trait AssemblyIOperator
-    sealed trait Condition
+    sealed trait A_Condition
      
     case object A_Add extends AssemblyBOperator
     case object A_Sub extends AssemblyBOperator
@@ -46,15 +46,15 @@ object intermediaryCompileStructure {
     case object A_Div extends AssemblyBOperator
     case object A_Mod extends AssemblyBOperator
     case object A_Cmp extends AssemblyUOperator // Unary operation where src = src1, dest = src2 
-    case object A_And extends AssemblyBOperator with Condition
-    case object A_Or extends AssemblyBOperator with Condition
-    case object A_GT extends AssemblyBOperator with Condition
-    case object A_GTE extends AssemblyBOperator with Condition
-    case object A_LT extends AssemblyBOperator with Condition
-    case object A_LTE extends AssemblyBOperator with Condition
-    case object A_EQ extends AssemblyBOperator with Condition
-    case object A_NEQ extends AssemblyBOperator with Condition
-    case object A_Not extends AssemblyUOperator with Condition
+    case object A_And extends AssemblyBOperator with A_Condition
+    case object A_Or extends AssemblyBOperator with A_Condition
+    case object A_GT extends AssemblyBOperator with A_Condition
+    case object A_GTE extends AssemblyBOperator with A_Condition
+    case object A_LT extends AssemblyBOperator with A_Condition
+    case object A_LTE extends AssemblyBOperator with A_Condition
+    case object A_EQ extends AssemblyBOperator with A_Condition
+    case object A_NEQ extends AssemblyBOperator with A_Condition
+    case object A_Not extends AssemblyUOperator with A_Condition
     case object A_Neg  extends AssemblyUOperator
     case object A_Len extends AssemblyUOperator with AssemblyIOperator
     case object A_Chr extends AssemblyUOperator

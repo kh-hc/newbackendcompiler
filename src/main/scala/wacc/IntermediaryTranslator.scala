@@ -143,7 +143,7 @@ class IntermediaryTranslator {
         }
     }
 
-    def translateCondExp(left: Expr, right: Expr, code: Condition) = {
+    def translateCondExp(left: Expr, right: Expr, code: A_Condition) = {
         val lb = new ListBuffer[Instr]
         val cl = translateExpression(left, lb)
         val cr = translateExpression(right, lb)
