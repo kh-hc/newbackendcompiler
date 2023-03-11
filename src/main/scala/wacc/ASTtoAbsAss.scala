@@ -105,6 +105,23 @@ class AbstractTranslator {
             val conditions = translateExp(cond, intermediate, stat.symbolTable.get)
             instructions.append(WhileInstruction(Conditional(intermediate, conditions), translateStat(body)))
         }
+        case SwitchStat(expr, cases) => {
+            val intermediate = getNewIntermediate
+            val conditions = translateExp(expr, intermediate, stat.symbolTable.get)
+            val caseInstructions: List[(Conditional, List[Instruction])] = cases.map { caseStat =>
+                val caseIntermediate = getNewIntermediate
+                val caseConditions = translateExp(caseStat.expr, caseIntermediate, stat.symbolTable.get)
+                val equalityCheck = BinaryOperation(A_EQ, intermediate, caseIntermediate, caseIntermediate)
+                (Conditional(caseIntermediate, caseConditions :+ equalityCheck), translateStat(caseStat.body))
+            }
+            def buildNestedIfInstructions(cases: List[(Conditional, List[Instruction])]): IfInstruction = cases match {
+                case (cond, instrs) :: Nil => IfInstruction(cond, instrs, List.empty)
+                case (cond, instrs) :: tail => IfInstruction(cond, instrs, buildNestedIfInstructions(tail) :: Nil)
+                case Nil => throw new Exception("Empty case list")
+            }
+            instructions.appendAll(conditions)
+            instructions.append(buildNestedIfInstructions(caseInstructions))
+        }
         case ScopeStat(body) => instructions.append(ScopeInstruction(translateStat(body)))
         case SeqStat(statements) => instructions.appendAll(statements.map(translateStat).flatten)
     }
