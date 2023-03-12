@@ -2,6 +2,7 @@ package wacc
 
 import parser.parse
 import CodeGenerator.buildAssembly
+import PeepholeOptimisation.peepholeOptimise
 import parsley.{Success, Failure}
 import java.io.File
 
@@ -25,7 +26,13 @@ object Main {
                         val finalTranslator = new AssemblyTranslator()
                         val intermediateTranslation = intermediateTranslator.translate(x)
                         val (assembly, inbuilts, funcs, stringLabelMap) = finalTranslator.translate(intermediateTranslation)
-                        buildAssembly(assembly, args.head, inbuilts.toSet, funcs, stringLabelMap.toMap)
+                        if (args.length > 1 && args(1) == "-o") {
+                            val (assemblyOptimised, funcsOptimised) = peepholeOptimise(assembly, funcs)
+                            buildAssembly(assemblyOptimised, args.head, inbuilts.toSet, funcsOptimised, stringLabelMap.toMap)
+                        }
+                        else {
+                            buildAssembly(assembly, args.head, inbuilts.toSet, funcs, stringLabelMap.toMap)
+                        }
                         sys.exit(0)
                     }
                 }
