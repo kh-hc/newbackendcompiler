@@ -6,7 +6,7 @@ object PeepholeOptimisation {
 
     /*
     Applies peephole optimisation to the intermediary assembly code produced
-    by our AbsAssToAssmebly translator
+    by our AbsAssToAssembly translator
     */
 
     def peepholeOptimise (intermediaryAssembly : (AssProg, List[Block])) : (AssProg, List[Block]) = {
@@ -31,8 +31,10 @@ object PeepholeOptimisation {
         }
         return optimisedBlocks
     }
-
-
+    
+    /*
+    Actual function applying peephole optimisation on a Block of instructions
+    */
     def optimiseBlock (instructions : List[AssInstr]) : List[AssInstr] = {
         var optimisedInstructions = List[AssInstr]()
 
@@ -50,7 +52,6 @@ object PeepholeOptimisation {
                                                             op1Curr, op2Curr, op1Next, op2Next, count)
                     optimisedInstructions = updated._1
                     count = updated._2
-                    
                 }
                 case (BinaryAssInstr(Str, condCurr, op1Curr, op2Curr),
                     BinaryAssInstr(Ldr, condNext, op1Next, op2Next)) => {
@@ -58,6 +59,13 @@ object PeepholeOptimisation {
                                                             op1Curr, op2Curr, op1Next, op2Next, count)
                     optimisedInstructions = updated._1
                     count = updated._2
+                }
+                // Removes consecutive pushes from and pops to the same register
+                case (UnaryAssInstr(Push, condCurr, opCurr),
+                    UnaryAssInstr(Pop, condNext, opNext)) => {
+                    if (opCurr == opNext) {
+                        count = count + 1
+                    }
                 }
                 case default => optimisedInstructions = optimisedInstructions :+ currInstr
             }
