@@ -7,9 +7,9 @@ object assemblyIR {
     sealed trait GeneralRegister extends Register
     sealed trait ReservedRegister extends Register
     case object Return extends ReservedRegister // R0
-    case object R1 extends GeneralRegister
-    case object R2 extends GeneralRegister
-    case object R3 extends GeneralRegister
+    case object R1 extends GeneralRegister // Used for access
+    case object R2 extends GeneralRegister // used for expressions
+    case object R3 extends GeneralRegister // used for expressions
     case object R4 extends GeneralRegister
     case object R5 extends GeneralRegister
     case object R6 extends GeneralRegister
@@ -41,7 +41,7 @@ object assemblyIR {
     case object Add extends Opcode
     case object Mov extends Opcode
     case class Ldr(opType: Type) extends Opcode
-    case class Str(opType: Type) extends Opcode
+    case class Str(opType: Type) extends Opcode // NOTE: arguments otherway around with str
     case object Push extends Opcode
     case object Pop extends Opcode
     case object Sub extends Opcode

@@ -27,7 +27,7 @@ class IntermediaryTranslator {
         WaccFunction(translateFunctionName(func.id), listBuffer.toList, translateParamList(func.params, func.symbolTable.get))
     }
     
-    def translateFunctionName(id: Identifier): String = s"wacc_f_${id.id}"
+    def translateFunctionName(id: Identifier): String = s"${id.id}"
     
     def translateParamList(paramlist: ParamList, symbolTable: SymbolTable): List[Stored] = {
         paramlist.paramlist.map(p => symbolTable.lookupRecursiveID(p.id.id)).map({case (id, t) => Stored(id, translateType(t))})
@@ -72,7 +72,8 @@ class IntermediaryTranslator {
             var access: BaseValue = Stored(arrayId, PointerType)           
             var derefCount = 1
             // If we are accessing a nested array, update the access positions
-            for (pos <- posList.dropRight(1)){
+            for (pos <- posList){
+                println(pos)
                 val layerType = derefType(arrayType, derefCount)
                 derefCount = derefCount + 1
                 val dereference = getNewIntermediate(PointerType)
@@ -267,10 +268,13 @@ class IntermediaryTranslator {
     def translateRValueInto(rvalue: Rvalue, location: Value, list: ListBuffer[Instr]) = rvalue match {
         case ArrayLiteral(value) => {
             val arrayPointer = getNewIntermediate(PointerType)
-            val arrayLocSize = getElementSize(value.head.tiepe)
+            var arrayLocSize = defaultIntSize
+            if (value.length > 0) {
+                arrayLocSize = getElementSize(value.head.tiepe)
+            }
             list += UnaryOperation(A_Malloc, Immediate(defaultIntSize + arrayLocSize * value.length), arrayPointer)
-            UnaryOperation(A_Load, Immediate(value.length), arrayPointer)
-            BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
+            list += BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
+            list += UnaryOperation(A_Load, Immediate(value.length), Access(arrayPointer, Immediate(-1 * arrayLocSize), IntType))
 
             for (i <- 0 to (value.length - 1)) {
                 val indexValue = Access(arrayPointer, Immediate(i * arrayLocSize), translateType(value.head.tiepe.get))
@@ -297,6 +301,9 @@ class IntermediaryTranslator {
             list += UnaryOperation(A_Load, fst, fstInd)
             list += UnaryOperation(A_Load, snd, sndInd)
         }
-        case e: Expr => translateExpression(e, list)
+        case e: Expr => {
+            val x = translateExpression(e, list)
+            list += UnaryOperation(A_Load, x, location)
+        }
     }
 }

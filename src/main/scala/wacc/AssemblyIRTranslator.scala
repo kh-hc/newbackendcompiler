@@ -55,30 +55,32 @@ class AssemblyIRTranslator {
           lb += TernaryAssInstr(RightSub, None, dstOp, srcOp, Imm(0))
         }
         case A_Len => {
-          translateMove(Offset(R1, Imm(-4), Word), dstOp, lb)
+          translateMove(Offset(srcOp, Imm(-4), Word), dstOp, lb)
         }
         case A_Chr => {
-           lb += BinaryAssInstr(Mov, None, dstOp, srcOp)
+          lb += BinaryAssInstr(Mov, None, dstOp, srcOp)
         }
         case A_Ord => {
           lb += BinaryAssInstr(Mov, None, dstOp, srcOp)
         }
         case A_Mov => {
-          translateMove(R1, dstOp, lb)
+          translateMove(srcOp, dstOp, lb)
         }
         case A_Load => {
-          lb += BinaryAssInstr(Ldr(Word), None, dstOp, srcOp)
+          translateMove(srcOp, dstOp, lb)
         }
         case A_Malloc => {
           translateMove(srcOp, Return, lb)
           lb += BranchLinked(Malloc, None)
+          translateMove(Return, dstOp, lb)
         }
       }
     }
     case BinaryOperation(operator, src1, src2, dest) => {
-      val src1Op = translateValue(src1, allocator, lb)
+      val src1Op = R2
+      translateMove(translateValue(src1, allocator, lb), R2, lb)
       val src2Op = translateValue(src2, allocator, lb)
-      val dstOp = translateValue(dest, allocator, lb) 
+      val dstOp = translateValue(dest, allocator, lb)
       operator match {
         case A_Add => {
           usedFunctions.addOne(Overflow)
@@ -95,8 +97,9 @@ class AssemblyIRTranslator {
         case A_Mul => {
           usedFunctions.addOne(Overflow)
           usedFunctions.addOne(PrintS)
-          lb += QuaternaryAssInstr(Smull, None, dstOp, R1, src1Op, src2Op)
-          lb += BinaryAssInstr(Cmp, None, R1, Imm(0))
+          translateMove(src2Op, R3, lb)
+          lb += QuaternaryAssInstr(Smull, None, dstOp, Return, src1Op, R3)
+          lb += BinaryAssInstr(Cmp, None, Return, Imm(0))
           lb += BranchLinked(Overflow, Some(GT))
         }
         case A_Div => {
@@ -161,7 +164,7 @@ class AssemblyIRTranslator {
           lb += BinaryAssInstr(Mov, Some(LT), dstOp, ir_true)
           lb += BinaryAssInstr(Mov, Some(GE), dstOp, ir_false)
         }
-      }     
+      }
     }
     case ScopeInstruction(body) => {
       val preScope = allocator.getState()
@@ -171,25 +174,25 @@ class AssemblyIRTranslator {
     }
     case IfInstruction(condition, ifInstructions, elseInstructions) => {
       val preIf = allocator.getState()
-      val elseLabel = generateLabel()
+      val ifLabel = generateLabel()
       val endLabel = generateLabel()
       condition.body.map(i => translateInstruction(i, allocator, lb))
       val cond = translateCond(condition.cond)
-      lb += Branch(elseLabel, Some(cond))
+      lb += Branch(ifLabel, Some(cond))
       val resetRegs = allocator.reloadState(preIf)
       val ifBuf = new ListBuffer[AssInstr]()
       val elseBuf = new ListBuffer[AssInstr]()
-      
-      ifInstructions.map(i => translateInstruction(i, allocator, ifBuf))
-      ifBuf.addAll(resetRegs)
-      ifBuf += Branch(endLabel, None)
-      elseBuf += NewLabel(elseLabel)
+
       elseInstructions.map(i => translateInstruction(i, allocator, elseBuf))
       elseBuf.addAll(resetRegs)
-      elseBuf += NewLabel(endLabel)
+      elseBuf += Branch(endLabel, None)
+      ifBuf += NewLabel(ifLabel)
+      ifInstructions.map(i => translateInstruction(i, allocator, ifBuf))
+      ifBuf.addAll(resetRegs)
+      ifBuf += NewLabel(endLabel)
 
-      lb.addAll(ifBuf)
       lb.addAll(elseBuf)
+      lb.addAll(ifBuf)
     }
     case WhileInstruction(condition, body) => {
       val preWhile = allocator.getState()
@@ -197,12 +200,14 @@ class AssemblyIRTranslator {
       val bodyLabel = generateLabel()
       val endLabel = generateLabel()
       val cond = translateCond(condition.cond)
+      val condBuf = new ListBuffer[AssInstr]()
       lb += Branch(condLabel, None)
       lb += NewLabel(bodyLabel)
+      condition.body.map(i => translateInstruction(i, allocator, condBuf))
       body.map(i => translateInstruction(i, allocator, lb))
       lb += NewLabel(condLabel)
-      condition.body.map(i => translateInstruction(i, allocator, lb))
-      Branch(bodyLabel, Some(cond))
+      lb.addAll(condBuf)
+      lb += Branch(bodyLabel, Some(cond))
       lb += NewLabel(endLabel)
       lb.addAll(allocator.reloadState(preWhile))
     }
@@ -225,7 +230,8 @@ class AssemblyIRTranslator {
       val srcOp = translateValue(src, allocator, lb)
       translateMove(srcOp, Return, lb)
       val inbuilt = translateInbuilt(operator, src)
-      BranchLinked(inbuilt, None)
+      usedFunctions.add(inbuilt)
+      lb += BranchLinked(inbuilt, None)
     }
     allocator.clearReserve()
   } 
@@ -246,6 +252,14 @@ class AssemblyIRTranslator {
       case Access(pointer, access, t) => {
         val pointOp = translateValue(pointer, allocator, lb)
         val accOp = translateValue(access, allocator, lb)
+        usedFunctions.add(OutOfBound)
+        usedFunctions.add(NullError)
+        usedFunctions.add(PrintS)
+        lb += BinaryAssInstr(Cmp, None, pointOp, Imm(0))
+        lb += BranchLinked(NullError, Some(EQ))
+        lb += BinaryAssInstr(Mov, None, R1, accOp)
+        lb += BinaryAssInstr(Cmp, None, R1, Offset(pointOp, Imm(-4), translateType(t)))
+        lb += BranchLinked(OutOfBound, Some(GE))
         Offset(pointOp, accOp, translateType(t))
       }
       case Immediate(value) => Imm(value)
@@ -286,8 +300,8 @@ class AssemblyIRTranslator {
     dst match {
       case Label(label) => throw new Exception("Warning, you're stupid") 
       case r: Register => src match {
-        case Label(label) => BinaryAssInstr(Ldr(Word), None, dst, src)
-        case r: Register => BinaryAssInstr(Mov, None, dst, src)
+        case Label(label) => lb += BinaryAssInstr(Ldr(Word), None, dst, src)
+        case r: Register => lb += BinaryAssInstr(Mov, None, dst, src)
         case Imm(x) => {
           if (x > 255 || x < -255) {
             lb += BinaryAssInstr(Ldr(Word), None, dst, src)
@@ -295,30 +309,33 @@ class AssemblyIRTranslator {
             lb += BinaryAssInstr(Mov, None, dst, src)
           }
         }
-        case Offset(reg, offset, t) => BinaryAssInstr(Ldr(t), None, dst, src)
+        case Offset(reg, offset, t) => lb += BinaryAssInstr(Ldr(t), None, dst, src)
       }
       case Imm(x) => throw new Exception("Imagine being this stupid")
-      case Offset(reg, offset, t) => src match {
-        case Label(label) => BinaryAssInstr(Str(t), None, dst, src)
-        case r: Register => BinaryAssInstr(Str(t), None, dst, src)
-        case Imm(x) => {
-          if (x > 255 || x < 0) {
-            lb += BinaryAssInstr(Ldr(Word), None, Return, src)
-            lb += BinaryAssInstr(Str(t), None, dst, Return)
-          } else {
-            lb += BinaryAssInstr(Str(t), None, dst, src)
+      case Offset(reg, offset, t) => {
+        src match {
+          case Label(label) => lb += BinaryAssInstr(Str(t), None, R1, src)
+          case r: Register => lb += BinaryAssInstr(Str(t), None, src, dst)
+          case Imm(x) => {
+            if (x > 255 || x < 0) {
+              lb += BinaryAssInstr(Ldr(Word), None, Return, src)
+              lb += BinaryAssInstr(Str(t), None, Return, dst)
+            } else {
+              lb += BinaryAssInstr(Mov, None, Return, src)
+              lb += BinaryAssInstr(Str(t), None, Return, dst)
+            }
           }
-        }
-        case Offset(reg, offset, t2) => {
-          BinaryAssInstr(Ldr(t2), None, Return, src)
-          BinaryAssInstr(Str(t), None, dst, Return)
+          case Offset(reg, offset, t2) => {
+            lb += BinaryAssInstr(Ldr(t2), None, Return, src)
+            lb += BinaryAssInstr(Str(t), None, Return, dst)
+          }
         }
       }
     }
   }
 
   def translateCond(cond: A_Condition): Condition = cond match {
-    case A_GT =>  GT
+    case A_GT => GT
     case A_GTE => GE
     case A_LT => LT
     case A_LTE => LE
@@ -338,7 +355,7 @@ class AssemblyIRTranslator {
     case A_Print => {
       val vtype = getTypeFromValue(v)
       vtype match {
-        case PointerType => PrintCA
+        case PointerType => PrintA
         case IntType => PrintI
         case CharType => PrintC
         case StringType => PrintS

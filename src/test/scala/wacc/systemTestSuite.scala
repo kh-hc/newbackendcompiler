@@ -14,7 +14,7 @@ We test on valid programs which print statements
 class SystemTestSuite extends AnyFlatSpec {
 
     // Used for some tests - the root path
-    val validRootPath = "src/test/scala/wacc/test_cases/valid/"
+    val validRootPath = "src/test/scala/wacc/test_cases/valid"
 
     // Get all files in the valid root path which contain a print or println statement
     val testFiles = getAllFiles(validRootPath)
@@ -23,7 +23,7 @@ class SystemTestSuite extends AnyFlatSpec {
     // }
 
     // Strings that invalidate the tests - i.e the tests should be run manually and the result should be ignored
-    val noTestFlags = Set("#addrs#", "read", " enter ", "#runtime_error#")
+    val noTestFlags = Set("#addrs#", "read", " enter ")
 
     def runTest(fileName : String, expectedOutput : (Int, String)) = {
         val filePath = fileName
