@@ -55,6 +55,7 @@ object AssemblyGenerator {
         OutOfBound -> "_errOutOfBounds",
         NullError -> "_errNull",
         Exit -> "exit",
+        Ret -> "0f",
         Free -> "_freepair",
         Malloc -> "malloc"
     )

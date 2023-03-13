@@ -73,7 +73,6 @@ class IntermediaryTranslator {
             var derefCount = 1
             // If we are accessing a nested array, update the access positions
             for (pos <- posList){
-                println(pos)
                 val layerType = derefType(arrayType, derefCount)
                 derefCount = derefCount + 1
                 val dereference = getNewIntermediate(PointerType)
@@ -146,7 +145,7 @@ class IntermediaryTranslator {
                     case BoolType => {
                         Conditional(A_EQ, List(UnaryOperation(A_Cmp, Stored(name, transt), a_true)))
                     }
-                    case _ => throw new Exception("Invalid condition passed through")
+                    case _ => throw new Exception("Invalid id condition passed through")
                 }
             }
             case BoolExpr(b: Boolean) => {
@@ -157,7 +156,8 @@ class IntermediaryTranslator {
                 }, a_true)
                 Conditional(A_EQ, lb.toList)
             }
-            case _ => throw new Exception("Invalid condition passed through")
+            case ParenExpr(e: Expr) => translateCondition(e)
+            case x => throw new Exception(s"Invalid condition passed through: $x")
         }
     }
 

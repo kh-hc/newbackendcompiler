@@ -228,10 +228,20 @@ class AssemblyIRTranslator {
     }
     case InbuiltFunction(operator, src) => {
       val srcOp = translateValue(src, allocator, lb)
+      if (operator == A_Exit) {
+        srcOp match {
+          case Imm(x) => {
+            if (x == -1) {
+              Imm(255)
+            } else {
+              Imm(x)
+            }
+          }
+          case x => x
+        }
+      }
       translateMove(srcOp, Return, lb)
-      val inbuilt = translateInbuilt(operator, src)
-      usedFunctions.add(inbuilt)
-      lb += BranchLinked(inbuilt, None)
+      translateInbuilt(operator, src, lb)
     }
     allocator.clearReserve()
   } 
@@ -244,6 +254,7 @@ class AssemblyIRTranslator {
     val (pref, suff) = allocator.generateBoilerPlate()
     funcBuffer.prependAll(retrieveArgs)
     funcBuffer.prependAll(pref)
+    funcBuffer += NewLabel("0f")
     funcBuffer.addAll(suff)
     Block(Label(function.id), funcBuffer.toList)
   }
@@ -343,30 +354,50 @@ class AssemblyIRTranslator {
     case A_NEQ => NE
   }
 
-  def translateInbuilt(inbuilt: AssemblyIOperator, v: Value): InBuilt = inbuilt match {
-    case A_Exit => Exit
+  def translateInbuilt(inbuilt: AssemblyIOperator, v: Value, lb: ListBuffer[AssInstr]) = inbuilt match {
+    case A_Exit => lb += BranchLinked(Exit, None)
     case A_Read => {
       val vtype = getTypeFromValue(v)
-      vtype match {
+      val f = vtype match {
         case IntType => ReadI
         case _ => ReadC
       }
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
     }
     case A_Print => {
       val vtype = getTypeFromValue(v)
-      vtype match {
+      val f = vtype match {
         case PointerType => PrintA
         case IntType => PrintI
         case CharType => PrintC
         case StringType => PrintS
         case BoolType => PrintB
       }
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
     }
-    case A_Malloc => Malloc
-    case A_Println => PrintLn
-    case A_Len => Len
-    case A_Free => Free
-    case A_Return => Ret
+    case A_Malloc => {
+      val f = Malloc
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
+    }
+    case A_Println => {
+      val f = PrintLn
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
+    }
+    case A_Len => {
+      val f = Len
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
+    }
+    case A_Free => {
+      val f = Free
+      usedFunctions.add(f)
+      lb += BranchLinked(f, None)
+    }
+    case A_Return => Branch("0f", None)
   }
 
   def escapedChar(c: Char): String = c match {
