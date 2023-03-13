@@ -518,26 +518,21 @@ _errNull:
             case BranchLinked(function, condCode) => {
                 condCode match {
                     case None => instructionBuilder.append("bl " + inbuiltNameMap(function))
-                    case Some(cond) => instructionBuilder.append("bl" + condMap(cond) + " " + inbuiltNameMap(function))
+                    case Some(cond) => instructionBuilder.append(s"bl${condMap(cond)} ${inbuiltNameMap(function)}")
                 }
             }
             case Branch(label, cond) => {
                 cond match {
                   case None => instructionBuilder.append(s"b $label")
-                  case Some(c) => {
-                    c match {
-                      case EQ => instructionBuilder.append(s"beq $label")
-                      case NE => instructionBuilder.append(s"bne $label")
-                      case GE => instructionBuilder.append(s"bge $label")
-                      case LT => instructionBuilder.append(s"blt $label")
-                      case GT => instructionBuilder.append(s"bgt $label")
-                      case LE => instructionBuilder.append(s"ble $label")
-                      case VS => instructionBuilder.append(s"bvs $label")
-                    }
-                  }
+                  case Some(c) => instructionBuilder.append(s"b${condMap(c)} $label")
                 }
             }
-            
+            case BL(label, cond) => {
+                cond match {
+                  case None => instructionBuilder.append(s"bl $label")
+                  case Some(c) => instructionBuilder.append(s"bl${condMap(c)} $label")
+                }
+            }
             case NewLabel(label) => {
                 instructionBuilder.append(s"$label:")
             }

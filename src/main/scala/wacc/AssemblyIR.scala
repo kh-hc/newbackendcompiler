@@ -91,6 +91,7 @@ object assemblyIR {
     case class MultiAssInstr(op: Opcode, operands: List[Operand]) extends AssInstr
     case class BranchLinked(function: InBuilt, cond: Option[Condition]) extends AssInstr
     case class Branch(function: String, cond: Option[Condition]) extends AssInstr
+    case class BL(function: String, cond: Option[Condition]) extends AssInstr
     case class CallFunction(function: String) extends AssInstr
     case class NewLabel(label: String) extends AssInstr
 

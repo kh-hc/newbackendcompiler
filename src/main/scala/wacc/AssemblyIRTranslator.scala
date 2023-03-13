@@ -10,6 +10,7 @@ class AssemblyIRTranslator {
   val usedFunctions: Set[InBuilt] = Set.empty
   var labelCount: Int = 0
   var stringLabelCount: Int = 0
+  val defaultIntSize: Int = 4
 
   def generateLabel(): String = {
     val ret = s".L${labelCount.toString}"
@@ -55,7 +56,10 @@ class AssemblyIRTranslator {
           lb += BinaryAssInstr(Mov, Some(EQ), dstOp, ir_false)
         }
         case A_Neg => {
+          usedFunctions.addOne(Overflow)
+          usedFunctions.addOne(PrintS)
           lb += TernaryAssInstr(RightSub, None, dstOp, srcOp, Imm(0))
+          lb += BranchLinked(Overflow, Some(VS))
         }
         case A_Len => {
           translateMove(Offset(srcOp, Imm(-4), Word), dstOp, lb)
@@ -101,7 +105,7 @@ class AssemblyIRTranslator {
           usedFunctions.addOne(PrintS)
           lb += QuaternaryAssInstr(Smull, None, dstOp, Return, src1Op, src2Op)
           lb += BinaryAssInstr(Cmp, None, Return, Imm(0))
-          lb += BranchLinked(Overflow, Some(GT))
+          lb += BranchLinked(Overflow, Some(NE))
         }
         case A_Div => {
           val (saveRegs, restoreRegs) = allocator.saveArgs(List(R1))
@@ -174,26 +178,22 @@ class AssemblyIRTranslator {
       lb.addAll(resetRegs)
     }
     case IfInstruction(condition, ifInstructions, elseInstructions) => {
-      val preIf = allocator.getState()
+      
       val ifLabel = generateLabel()
       val endLabel = generateLabel()
       condition.body.map(i => translateInstruction(i, allocator, lb))
       val cond = translateCond(condition.cond)
+      val preIf = allocator.getState()
+
       lb += Branch(ifLabel, Some(cond))
-      val resetRegs = allocator.reloadState(preIf)
-      val ifBuf = new ListBuffer[AssInstr]()
-      val elseBuf = new ListBuffer[AssInstr]()
+      elseInstructions.map(i => translateInstruction(i, allocator, lb))
+      lb.addAll(allocator.reloadState(preIf))
+      lb += Branch(endLabel, None)
 
-      elseInstructions.map(i => translateInstruction(i, allocator, elseBuf))
-      elseBuf.addAll(resetRegs)
-      elseBuf += Branch(endLabel, None)
-      ifBuf += NewLabel(ifLabel)
-      ifInstructions.map(i => translateInstruction(i, allocator, ifBuf))
-      ifBuf.addAll(resetRegs)
-      ifBuf += NewLabel(endLabel)
-
-      lb.addAll(elseBuf)
-      lb.addAll(ifBuf)
+      lb += NewLabel(ifLabel)
+      ifInstructions.map(i => translateInstruction(i, allocator, lb))
+      lb.addAll(allocator.reloadState(preIf))
+      lb += NewLabel(endLabel)
     }
     case WhileInstruction(condition, body) => {
       val preWhile = allocator.getState()
@@ -221,7 +221,7 @@ class AssemblyIRTranslator {
         allocator.clearReserve()
       }
       val returnOp = translateValue(returnTo, allocator, lb)
-      lb += Branch(s"wacc_$functionName", None)
+      lb += BL(s"wacc_$functionName", None)
       translateMove(Return, returnOp, lb)
     }
     case InbuiltFunction(operator, src) => {
@@ -261,18 +261,30 @@ class AssemblyIRTranslator {
       case Access(pointer, access, t) => {
         val pointOp = translateValueInto(pointer, allocator, lb, R2)
         val accOp = translateValueInto(access, allocator, lb, R1)
-        usedFunctions.add(OutOfBound)
-        usedFunctions.add(NullError)
-        usedFunctions.add(PrintS)
-        lb += BinaryAssInstr(Cmp, None, pointOp, Imm(0))
-        lb += BranchLinked(NullError, Some(EQ))
-        translateMove(Offset(pointOp, Imm(-4), translateType(t)), pointOp, lb)
-        lb += BinaryAssInstr(Cmp, None, accOp, pointOp)
-        lb += BranchLinked(OutOfBound, Some(GE))
+        t match{
+          case PointerType(Some(a: IntermediateType)) => {
+            // Arrays
+            usedFunctions.add(OutOfBound)
+            usedFunctions.add(PrintS)
+            translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), R3, lb)
+            lb += TernaryAssInstr(Mul, None, R3, R3, Imm(getElementSize(a)))
+            lb += BinaryAssInstr(Cmp, None, accOp, R3)
+            lb += BranchLinked(OutOfBound, Some(GE))
+          }
+          case PointerType(None) => {
+            // Pair
+            usedFunctions.add(NullError)
+            usedFunctions.add(PrintS)
+            lb += BinaryAssInstr(Cmp, None, pointOp, Imm(0))
+            lb += BranchLinked(NullError, Some(EQ))
+          }
+          case _ => 
+        }
         Offset(pointOp, accOp, translateType(t))
       }
       case Immediate(value) => Imm(value)
       case Character(value) => Imm(value)
+      case Bool(value) => Imm(value)
       case IntermediateValue(id, tiepe) => {
         val (instrs, op) = allocator.getRegister(s"__$id")
         lb.addAll(instrs)
@@ -290,6 +302,12 @@ class AssemblyIRTranslator {
       }
   }
 
+  def getElementSize(t: IntermediateType): Int = t match {
+      case CharType => 1
+      case BoolType => 1
+      case _ => defaultIntSize
+    }
+
   def translateType(tiepe: IntermediateType): Type = tiepe match {
     case BoolType => Byte
     case CharType => Byte
@@ -297,9 +315,10 @@ class AssemblyIRTranslator {
   }
 
   def getTypeFromValue(value: Value): IntermediateType = value match {
-    case Access(pointer, access, t) => PointerType
+    case Access(pointer, access, t) => t
     case Immediate(value) => IntType
     case Character(value) => CharType
+    case Bool(value) => BoolType
     case IntermediateValue(id, tiepe) => tiepe
     case Stored(id, tiepe) => tiepe
     case StringLiteral(value) => StringType
@@ -375,7 +394,8 @@ class AssemblyIRTranslator {
     case A_Print => {
       val vtype = getTypeFromValue(v)
       val f = vtype match {
-        case PointerType => PrintA
+        case PointerType(Some(CharType)) => PrintS
+        case PointerType(_) => PrintA
         case IntType => PrintI
         case CharType => PrintC
         case StringType => PrintS
@@ -392,7 +412,8 @@ class AssemblyIRTranslator {
     case A_Println => {
       val vtype = getTypeFromValue(v)
       val f = vtype match {
-        case PointerType => PrintA
+        case PointerType(Some(CharType)) => PrintS
+        case PointerType(_) => PrintA
         case IntType => PrintI
         case CharType => PrintC
         case StringType => PrintS

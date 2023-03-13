@@ -9,20 +9,21 @@ object intermediaryCompileStructure {
     case object BoolType extends IntermediateType
     case object StringType extends IntermediateType
     case object CharType extends IntermediateType
-    case object PointerType extends IntermediateType
+    case class PointerType(dest: Option[IntermediateType]) extends IntermediateType
 
     sealed trait Value
     sealed trait BaseValue extends Value
     case class Immediate(value: Int) extends BaseValue
     case class Character(value: Int) extends BaseValue
+    case class Bool(value: Int) extends BaseValue
     case class Stored(id: String, tiepe: IntermediateType) extends BaseValue
     case class IntermediateValue(id: Int, tiepe: IntermediateType) extends BaseValue
     
     case class StringLiteral(value: String) extends BaseValue
     case class Access(pointer: BaseValue, access: Value, tiepe: IntermediateType) extends Value
 
-    val a_true = Immediate(1)
-    val a_false = Immediate(0)
+    val a_true = Bool(1)
+    val a_false = Bool(0)
 
     sealed trait Instr
     case class BinaryOperation(operator: AssemblyBOperator, src1: Value, src2: Value, dest: Value) extends Instr

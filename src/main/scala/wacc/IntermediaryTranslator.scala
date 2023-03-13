@@ -1,7 +1,5 @@
 package wacc
 
-import wacc.Archive.AssemblyInstructions
-
 class IntermediaryTranslator {
     import scala.collection.mutable.ListBuffer
     import abstractSyntaxTree._
@@ -40,7 +38,8 @@ class IntermediaryTranslator {
         case BoolSymbol => BoolType
         case CharSymbol => CharType
         case StringSymbol => StringType
-        case a: SymbolType => PointerType
+        case ArraySymbol(t) => PointerType(Some(translateType(t)))
+        case a: SymbolType => PointerType(None)
     }
 
     // Returns the size of each type in bytes
@@ -73,13 +72,13 @@ class IntermediaryTranslator {
         case ParenExpr(e) => translateExpression(e, lb)
         case ArrayElem(id, posList) => {
             val (arrayId, arrayType) = expr.symbolTable.get.lookupRecursiveID(id.id)
-            var access: BaseValue = Stored(arrayId, PointerType)           
             var derefCount = 1
+            var access: BaseValue = Stored(arrayId, PointerType(Some(translateType(derefType(arrayType, derefCount)))))  
             // If we are accessing a nested array, update the access positions
             for (pos <- posList){
                 val layerType = derefType(arrayType, derefCount)
                 derefCount = derefCount + 1
-                val dereference = getNewIntermediate(PointerType)
+                val dereference = getNewIntermediate(PointerType(Some(translateType(layerType))))
                 val position = translateExpression(pos, lb)
                 val posInter = getNewIntermediate(IntType)
                 lb += UnaryOperation(A_Mov, position, posInter)
@@ -96,7 +95,11 @@ class IntermediaryTranslator {
             case false => a_false
         }
         case StrExpr(s) => StringLiteral(s)
-        case PairLiteral => getNewIntermediate(PointerType)
+        case PairLiteral => {
+            val nullPair = getNewIntermediate(PointerType(None))
+            lb += UnaryOperation(A_Mov, Immediate(0), nullPair)
+            nullPair
+        }
         case Identifier(id) => {
             val (name, t) = expr.symbolTable.get.lookupRecursiveID(id)
             Stored(name, translateType(t))
@@ -190,7 +193,10 @@ class IntermediaryTranslator {
                 leftInter match {
                     case b: BaseValue => translateRValueInto(right, leftInter, l)
                     case a: Access => {
-                        val intermediate = getNewIntermediate(PointerType)
+                        val intermediate = left.tiepe match{
+                            case Some(ArraySymbol(t)) => getNewIntermediate(PointerType(Some(translateType(t))))
+                            case _ => getNewIntermediate(PointerType(None))
+                        }
                         translateRValueInto(right, intermediate, l)
                         l += UnaryOperation(A_Load, intermediate, leftInter)
                     }
@@ -250,11 +256,11 @@ class IntermediaryTranslator {
             case PairElemSnd(pair: Lvalue) => pair
         }
         translateLValue(basePair, lb) match {
-            case b: BaseValue => Access(b, pairAccessLocation(p), PointerType)
+            case b: BaseValue => Access(b, pairAccessLocation(p), PointerType(None))
             case a: Access => {
-                val intermediate = getNewIntermediate(PointerType)
+                val intermediate = getNewIntermediate(PointerType(None))
                 lb += UnaryOperation(A_Load, a, intermediate)
-                Access(intermediate, pairAccessLocation(p), PointerType)
+                Access(intermediate, pairAccessLocation(p), PointerType(None))
             }
         }
     }
@@ -275,11 +281,13 @@ class IntermediaryTranslator {
 
     def translateRValueInto(rvalue: Rvalue, location: Value, list: ListBuffer[Instr]) = rvalue match {
         case ArrayLiteral(value) => {
-            val arrayPointer = getNewIntermediate(PointerType)
             var arrayLocSize = defaultIntSize
+            var arrayTiepe: IntermediateType = IntType
             if (value.length > 0) {
                 arrayLocSize = getElementSize(value.head.tiepe)
+                arrayTiepe = translateType(value.head.tiepe.get)
             }
+            val arrayPointer = getNewIntermediate(PointerType(Some(arrayTiepe)))
             list += UnaryOperation(A_Malloc, Immediate(defaultIntSize + arrayLocSize * value.length), arrayPointer)
             list += BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
             list += UnaryOperation(A_Load, Immediate(value.length), Access(arrayPointer, Immediate(-1 * arrayLocSize), IntType))
@@ -289,6 +297,7 @@ class IntermediaryTranslator {
                 val e = translateExpression(value(i), list)
                 list += UnaryOperation(A_Load, e, indexValue)
             }
+            list += UnaryOperation(A_Mov, arrayPointer, location)
         }
         case Call(id, args) => {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
@@ -303,13 +312,19 @@ class IntermediaryTranslator {
         }
         case p: PairElem => getPairToValue(p, list)
         case NewPair(el, er) => {
+            val pairPointer = getNewIntermediate(PointerType(None))
             val fst = translateExpression(el, list)
-            val fstInd = Access(Immediate(0), location, PointerType)
+            val fstInter = getNewIntermediate(translateType(el.tiepe.getOrElse(IntSymbol)))
+            list += UnaryOperation(A_Mov, fst, fstInter)
+            val fstInd = Access(pairPointer, Immediate(0), PointerType(None))
             val snd = translateExpression(er, list)
-            val sndInd = Access(Immediate(defaultIntSize), location, PointerType)
-            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), location)
-            list += UnaryOperation(A_Load, fst, fstInd)
-            list += UnaryOperation(A_Load, snd, sndInd)
+            val sndInter = getNewIntermediate(translateType(er.tiepe.getOrElse(IntSymbol)))
+            list += UnaryOperation(A_Mov, snd, sndInter)
+            val sndInd = Access(pairPointer, Immediate(defaultIntSize), PointerType(None))
+            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), pairPointer)
+            list += UnaryOperation(A_Load, fstInter, fstInd)
+            list += UnaryOperation(A_Load, sndInter, sndInd)
+            list += UnaryOperation(A_Mov, pairPointer, location)
         }
         case e: Expr => {
             val x = translateExpression(e, list)
