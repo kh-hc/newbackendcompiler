@@ -21,25 +21,27 @@ class SymbolTable(val parent: Option[SymbolTable]) {
     var table = Map.empty[String, SymbolType];
     var functionTable = Map.empty[String, SymbolType];
 
-    def add(func: FunctionUnit) : Unit = (
-        if (lookupFunction(func.id.id).isEmpty){
-            functionTable = functionTable + (func.id.id -> FunctionSymbol(translate(func.t), func.params.paramlist.map(p => translate(p.t))))
+    def add(func: FunctionUnit) : Boolean = {
+        val alreadyIn = lookupFunction(func.id.id).isEmpty
+        functionTable = functionTable + (func.id.id -> FunctionSymbol(translate(func.t), func.params.paramlist.map(p => translate(p.t))))
+        if (alreadyIn){
+            true
         } else {
-            throw new Exception("Attempt to redefine a variable or function")
-        }
-    )
+            false
+        } 
+    }
 
-    def add(name: String, t: Type) : Unit = (
-        add(name, translate(t))
-    )
+    def add(name: String, t: Type) : Boolean = add(name, translate(t))
 
-    def add(name: String, t: SymbolType) : Unit = (
-        if (lookup(name).isEmpty){
-            table = table + (name -> t)
+    def add(name: String, t: SymbolType) : Boolean = {
+        val alreadyIn = lookup(name).isEmpty
+        table = table + (name -> t)
+        if (alreadyIn){
+            true
         } else {
-            throw new Exception("Attempt to redefine a variable or function")
-        }
-    )
+            false
+        } 
+    }
 
     def lookup(name: String) : Option[SymbolType] = (
         table.get(name)

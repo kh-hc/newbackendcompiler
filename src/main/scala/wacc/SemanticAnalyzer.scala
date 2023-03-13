@@ -25,13 +25,9 @@ class SemanticAnalyzer(file: String) {
 
         // Record function definitions in the symbol table as functions can be mutually recursive
         ast.funcs.map(f => {
-            try{
-                symbolTable.add(f)
-            } catch {
-                case  e: Exception => {
-                    errorStack += varAlreadyAss.err(f.id)(file)
-                } 
-            }
+        if (!symbolTable.add(f)){
+            errorStack += varAlreadyAss.err(f.id)(file)
+        } 
         })
 
         // Analyze the body of the functions
@@ -48,13 +44,10 @@ class SemanticAnalyzer(file: String) {
 
         // Add each parameter into the new symbol table 
         function.params.paramlist.map(p => {
-            try {
-                argsSymbols.add(p.id.id, p.t) 
-            } catch {
-                case  e: Exception => {
+                if(!argsSymbols.add(p.id.id, p.t)) {
                     errorStack += varAlreadyAss.err(p.id)(file)
                 }
-            }})
+            })
 
         // Analyze the function, with a new child symbol table as function arguments can be shadowed
         val functionSymbolTable = new SymbolTable(Some(argsSymbols))
@@ -121,12 +114,8 @@ class SemanticAnalyzer(file: String) {
                             case default => errorStack += unexpectedTypeStat.err(statement, providedType, expectedType)(file)
                         }
                     }
-                    try {
-                        symbolTable.add(id.id, expectedType)
-                    } catch {
-                        case e: Exception => {
-                            errorStack += varAlreadyAss.err(id)(file)
-                        }
+                    if (!symbolTable.add(id.id, expectedType)){
+                        errorStack += varAlreadyAss.err(id)(file)
                     }
                     return ()
                 } else {

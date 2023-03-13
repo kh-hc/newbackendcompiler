@@ -26,7 +26,6 @@ class AssemblyIRTranslator {
   def translate(program: Program): (AssProg, Set[InBuilt], List[Block], Map[Label,String]) = {
     val main = translateMain(program.main)
     val funcs = program.functions.map(translateFunction)
-    funcs.map(b => functions.addOne(b))
     (AssProg(main +: funcs), usedFunctions, functions.toList, stringLabelMap)
   }
 
@@ -34,17 +33,21 @@ class AssemblyIRTranslator {
     val assembly = new ListBuffer[AssInstr] 
     val alloc = new RegisterAllocator()
     instrs.map(i => translateInstruction(i, alloc, assembly))
+    val (pref, suff) = alloc.generateBoilerPlate()
+    assembly.prependAll(pref)
+    translateMove(Imm(0), Return, assembly)
+    assembly.appendAll(suff)
     Block(Label("main"), assembly.toList)
   }
 
   // Requires there to be 4 or more registers in the general register set
   def translateInstruction(instr: Instr, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Unit = instr match {
     case UnaryOperation(operator, src, dest) => {
-      val srcOp = translateValue(src, allocator, lb)
+      val srcOp = translateValueInto(src, allocator, lb, R1)
       val dstOp = translateValue(dest, allocator, lb)
       operator match {
         case A_Cmp => {
-          lb += BinaryAssInstr(Cmp, None, dstOp, srcOp)
+          lb += BinaryAssInstr(Cmp, None, srcOp, dstOp)
         }
         case A_Not => {
           lb += BinaryAssInstr(Cmp, None, srcOp, ir_true)
@@ -77,9 +80,8 @@ class AssemblyIRTranslator {
       }
     }
     case BinaryOperation(operator, src1, src2, dest) => {
-      val src1Op = R2
-      translateMove(translateValue(src1, allocator, lb), R2, lb)
-      val src2Op = translateValue(src2, allocator, lb)
+      val src1Op = translateValueInto(src1, allocator, lb, R2)
+      val src2Op = translateValueInto(src2, allocator, lb, R3)
       val dstOp = translateValue(dest, allocator, lb)
       operator match {
         case A_Add => {
@@ -97,8 +99,7 @@ class AssemblyIRTranslator {
         case A_Mul => {
           usedFunctions.addOne(Overflow)
           usedFunctions.addOne(PrintS)
-          translateMove(src2Op, R3, lb)
-          lb += QuaternaryAssInstr(Smull, None, dstOp, Return, src1Op, R3)
+          lb += QuaternaryAssInstr(Smull, None, dstOp, Return, src1Op, src2Op)
           lb += BinaryAssInstr(Cmp, None, Return, Imm(0))
           lb += BranchLinked(Overflow, Some(GT))
         }
@@ -198,18 +199,15 @@ class AssemblyIRTranslator {
       val preWhile = allocator.getState()
       val condLabel = generateLabel()
       val bodyLabel = generateLabel()
-      val endLabel = generateLabel()
       val cond = translateCond(condition.cond)
-      val condBuf = new ListBuffer[AssInstr]()
       lb += Branch(condLabel, None)
       lb += NewLabel(bodyLabel)
-      condition.body.map(i => translateInstruction(i, allocator, condBuf))
       body.map(i => translateInstruction(i, allocator, lb))
-      lb += NewLabel(condLabel)
-      lb.addAll(condBuf)
-      lb += Branch(bodyLabel, Some(cond))
-      lb += NewLabel(endLabel)
       lb.addAll(allocator.reloadState(preWhile))
+      lb += NewLabel(condLabel)
+      condition.body.map(i => translateInstruction(i, allocator, lb))
+      lb.addAll(allocator.reloadState(preWhile))
+      lb += Branch(bodyLabel, Some(cond))
     }
     case FunctionCall(functionName, args, returnTo) => {
       // Set arguments into the stack and then branch linked
@@ -223,7 +221,7 @@ class AssemblyIRTranslator {
         allocator.clearReserve()
       }
       val returnOp = translateValue(returnTo, allocator, lb)
-      lb += Branch(functionName, None)
+      lb += Branch(s"wacc_$functionName", None)
       translateMove(Return, returnOp, lb)
     }
     case InbuiltFunction(operator, src) => {
@@ -254,22 +252,22 @@ class AssemblyIRTranslator {
     val (pref, suff) = allocator.generateBoilerPlate()
     funcBuffer.prependAll(retrieveArgs)
     funcBuffer.prependAll(pref)
-    funcBuffer += NewLabel("0f")
+    funcBuffer += NewLabel("0")
     funcBuffer.addAll(suff)
     Block(Label(function.id), funcBuffer.toList)
   }
 
   def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = value match {
       case Access(pointer, access, t) => {
-        val pointOp = translateValue(pointer, allocator, lb)
-        val accOp = translateValue(access, allocator, lb)
+        val pointOp = translateValueInto(pointer, allocator, lb, R2)
+        val accOp = translateValueInto(access, allocator, lb, R1)
         usedFunctions.add(OutOfBound)
         usedFunctions.add(NullError)
         usedFunctions.add(PrintS)
         lb += BinaryAssInstr(Cmp, None, pointOp, Imm(0))
         lb += BranchLinked(NullError, Some(EQ))
-        lb += BinaryAssInstr(Mov, None, R1, accOp)
-        lb += BinaryAssInstr(Cmp, None, R1, Offset(pointOp, Imm(-4), translateType(t)))
+        translateMove(Offset(pointOp, Imm(-4), translateType(t)), pointOp, lb)
+        lb += BinaryAssInstr(Cmp, None, accOp, pointOp)
         lb += BranchLinked(OutOfBound, Some(GE))
         Offset(pointOp, accOp, translateType(t))
       }
@@ -314,7 +312,7 @@ class AssemblyIRTranslator {
         case Label(label) => lb += BinaryAssInstr(Ldr(Word), None, dst, src)
         case r: Register => lb += BinaryAssInstr(Mov, None, dst, src)
         case Imm(x) => {
-          if (x > 255 || x < -255) {
+          if (x > 255 || x < 0) {
             lb += BinaryAssInstr(Ldr(Word), None, dst, src)
           } else {
             lb += BinaryAssInstr(Mov, None, dst, src)
@@ -325,7 +323,10 @@ class AssemblyIRTranslator {
       case Imm(x) => throw new Exception("Imagine being this stupid")
       case Offset(reg, offset, t) => {
         src match {
-          case Label(label) => lb += BinaryAssInstr(Str(t), None, R1, src)
+          case Label(label) => {
+            lb += BinaryAssInstr(Ldr(t), None, Return, src)
+            lb += BinaryAssInstr(Str(t), None, Return, dst)
+          }
           case r: Register => lb += BinaryAssInstr(Str(t), None, src, dst)
           case Imm(x) => {
             if (x > 255 || x < 0) {
@@ -343,6 +344,12 @@ class AssemblyIRTranslator {
         }
       }
     }
+  }
+
+  def translateValueInto(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr], destination: Register): Register = {
+    val operand = translateValue(value, allocator, lb)
+    translateMove(operand, destination, lb)
+    destination
   }
 
   def translateCond(cond: A_Condition): Condition = cond match {
@@ -383,9 +390,18 @@ class AssemblyIRTranslator {
       lb += BranchLinked(f, None)
     }
     case A_Println => {
-      val f = PrintLn
+      val vtype = getTypeFromValue(v)
+      val f = vtype match {
+        case PointerType => PrintA
+        case IntType => PrintI
+        case CharType => PrintC
+        case StringType => PrintS
+        case BoolType => PrintB
+      }
       usedFunctions.add(f)
+      usedFunctions.add(PrintLn)
       lb += BranchLinked(f, None)
+      lb += BranchLinked(PrintLn, None)
     }
     case A_Len => {
       val f = Len
@@ -395,9 +411,11 @@ class AssemblyIRTranslator {
     case A_Free => {
       val f = Free
       usedFunctions.add(f)
+      usedFunctions.add(NullError)
+      usedFunctions.add(PrintS)
       lb += BranchLinked(f, None)
     }
-    case A_Return => Branch("0f", None)
+    case A_Return => lb += Branch("0f", None)
   }
 
   def escapedChar(c: Char): String = c match {

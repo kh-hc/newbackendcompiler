@@ -1,5 +1,7 @@
 package wacc
 
+import wacc.Archive.AssemblyInstructions
+
 class IntermediaryTranslator {
     import scala.collection.mutable.ListBuffer
     import abstractSyntaxTree._
@@ -52,7 +54,9 @@ class IntermediaryTranslator {
         case Sub(l, r) => translateBinaryExp(l, r, lb, IntType, A_Sub)
         case Div(l, r) => translateBinaryExp(l, r, lb, IntType, A_Div)
         case Mod(l, r) => translateBinaryExp(l, r, lb, IntType, A_Mod)
-        case Mul(l, r) => translateBinaryExp(l, r, lb, IntType, A_Mul)
+        case Mul(l, r) => {
+            translateBinaryExp(l, r, lb, IntType, A_Mul)
+        }
         case Equal(l, r) => translateBinaryExp(l, r, lb, BoolType, A_EQ)
         case NotEqual(l, r) => translateBinaryExp(l, r, lb, BoolType, A_NEQ)
         case GreaterOrEqualThan(l, r) => translateBinaryExp(l, r, lb, BoolType, A_GTE)
@@ -77,8 +81,10 @@ class IntermediaryTranslator {
                 derefCount = derefCount + 1
                 val dereference = getNewIntermediate(PointerType)
                 val position = translateExpression(pos, lb)
-                lb += BinaryOperation(A_Mul, position, Immediate(typeToSize(layerType)), position)
-                lb += UnaryOperation(A_Load, Access(access, position, translateType(layerType)), dereference)
+                val posInter = getNewIntermediate(IntType)
+                lb += UnaryOperation(A_Mov, position, posInter)
+                lb += BinaryOperation(A_Mul, posInter, Immediate(typeToSize(layerType)), posInter)
+                lb += UnaryOperation(A_Load, Access(access, posInter, translateType(layerType)), dereference)
                 access = dereference
             }
             access
@@ -86,8 +92,8 @@ class IntermediaryTranslator {
         case CharExpr(c) => Character(c.toInt)
         case IntExpr(i) => Immediate(i)
         case BoolExpr(b) => b match {
-            case true => Immediate(1)
-            case false => Immediate(0)
+            case true => a_true
+            case false => a_false
         }
         case StrExpr(s) => StringLiteral(s)
         case PairLiteral => getNewIntermediate(PointerType)
@@ -173,6 +179,8 @@ class IntermediaryTranslator {
         st match {
             case SkipStat => 
             case AssignStat(t, id, value) => {
+                st.symbolTable.get.add(id.id, t)
+                st.symbolTable.get.setAssignedId(id.id)
                 val intermediate = st.symbolTable.get.lookupRecursiveID(id.id)
                 translateRValueInto(value, Stored(intermediate._1, translateType(intermediate._2)), l)
                 st.symbolTable.get.setAssignedId(id.id)
@@ -286,7 +294,9 @@ class IntermediaryTranslator {
             val argList: ListBuffer[Value] = new ListBuffer[Value]()
             for (e <- args.args) {
                 val argValue = translateExpression(e, list)
-                argList += argValue
+                val inter = getNewIntermediate(translateType(e.tiepe.get))
+                list += UnaryOperation(A_Mov, argValue, inter)
+                argList += inter
             }
             val funcCall = FunctionCall(id.id, argList.toList, location)
             list += funcCall

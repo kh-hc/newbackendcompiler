@@ -469,7 +469,8 @@ _errNull:
         val instructionBuilder = new StringBuilder()
         instr match {
             case QuaternaryAssInstr(op, cond, op1, op2, op3, op4) => {
-                instructionBuilder.append(opcodeMap(op) + " ")
+                instructionBuilder.append(opcodeMap(op))
+                instructionBuilder.append(conditionTranslator(cond) + " ")
                 instructionBuilder.append(operandToString(op1) + ", ")
                 instructionBuilder.append(operandToString(op2) + ", ")
                 instructionBuilder.append(operandToString(op3) + ", ")
@@ -490,13 +491,15 @@ _errNull:
                 })
             }
             case TernaryAssInstr(op, cond, op1, op2, op3) => {
-                instructionBuilder.append(opcodeMap(op) + " ")
+                instructionBuilder.append(opcodeMap(op))
+                instructionBuilder.append(conditionTranslator(cond) + " ")
                 instructionBuilder.append(operandToString(op1) + ", ")
                 instructionBuilder.append(operandToString(op2) + ", ")
                 instructionBuilder.append(operandToString(op3))
             }
             case BinaryAssInstr(op, cond, op1, op2) => {
-                instructionBuilder.append(opcodeMap(op) + " ")
+                instructionBuilder.append(opcodeMap(op))
+                instructionBuilder.append(conditionTranslator(cond) + " ")
                 instructionBuilder.append(operandToString(op1) + ", ")
                 (op, op2) match {
                     case (Ldr(Word), Imm(x)) => instructionBuilder.append(s"=${operandToString(op2)}")
@@ -504,7 +507,8 @@ _errNull:
                 }
             }
             case UnaryAssInstr(op, cond, op1) => {
-                instructionBuilder.append(opcodeMap(op) + " ")
+                instructionBuilder.append(opcodeMap(op))
+                instructionBuilder.append(conditionTranslator(cond) + " ")
                 if (op == Push || op == Pop){
                     instructionBuilder.append("{" + operandToString(op1) + "}")
                 } else {
@@ -547,6 +551,19 @@ _errNull:
             }
         }
         return instructionBuilder
+    }
+
+    def conditionTranslator(cond: Option[Condition]): String = cond match {
+        case None => ""
+        case Some(c) => c match {
+            case EQ => "eq"
+            case NE => "ne"
+            case GE => "ge"
+            case LT => "lt"
+            case GT => "gt"
+            case LE => "le"
+            case VS => "vs"
+        }
     }
 
     // These equality builders assume that operand is the destination for the equality
