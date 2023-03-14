@@ -13,7 +13,7 @@ begin
   int f(char[] u) is
     int i = 0;
     while (i < len u) do
-      print u[i] ; 
+      print u[i] ;
       i = i + 1
     done ;
     return 0
