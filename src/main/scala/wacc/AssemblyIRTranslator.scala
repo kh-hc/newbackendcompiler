@@ -260,15 +260,16 @@ class AssemblyIRTranslator {
   def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = value match {
       case Access(pointer, access, t) => {
         val pointOp = translateValueInto(pointer, allocator, lb, R2)
-        val accOp = translateValueInto(access, allocator, lb, R1)
+        val accOp = translateValueInto(access, allocator, lb, R3)
         t match{
           case PointerType(Some(a: IntermediateType)) => {
             // Arrays
             usedFunctions.add(OutOfBound)
             usedFunctions.add(PrintS)
-            translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), R3, lb)
-            lb += TernaryAssInstr(Mul, None, R3, R3, Imm(getElementSize(a)))
-            lb += BinaryAssInstr(Cmp, None, accOp, R3)
+            translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), Return, lb)
+            lb += BinaryAssInstr(Mov, None, R1, Imm(getElementSize(a)))
+            lb += TernaryAssInstr(Mul, None, Return, Return, R1)
+            lb += BinaryAssInstr(Cmp, None, accOp, Return)
             lb += BranchLinked(OutOfBound, Some(GE))
           }
           case PointerType(None) => {

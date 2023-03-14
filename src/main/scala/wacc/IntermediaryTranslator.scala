@@ -256,7 +256,9 @@ class IntermediaryTranslator {
             case PairElemSnd(pair: Lvalue) => pair
         }
         translateLValue(basePair, lb) match {
-            case b: BaseValue => Access(b, pairAccessLocation(p), PointerType(None))
+            case b: BaseValue => {
+                Access(b, pairAccessLocation(p), PointerType(None))
+            }
             case a: Access => {
                 val intermediate = getNewIntermediate(PointerType(None))
                 lb += UnaryOperation(A_Load, a, intermediate)
@@ -310,20 +312,26 @@ class IntermediaryTranslator {
             val funcCall = FunctionCall(id.id, argList.toList, location)
             list += funcCall
         }
-        case p: PairElem => getPairToValue(p, list)
+        case p: PairElem => {
+            val pairAccess = getPairToValue(p, list)
+            list += UnaryOperation(A_Load, pairAccess, location)
+        }
         case NewPair(el, er) => {
             val pairPointer = getNewIntermediate(PointerType(None))
+            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), pairPointer)
+
             val fst = translateExpression(el, list)
             val fstInter = getNewIntermediate(translateType(el.tiepe.getOrElse(IntSymbol)))
             list += UnaryOperation(A_Mov, fst, fstInter)
             val fstInd = Access(pairPointer, Immediate(0), PointerType(None))
+            list += UnaryOperation(A_Load, fstInter, fstInd)
+
             val snd = translateExpression(er, list)
             val sndInter = getNewIntermediate(translateType(er.tiepe.getOrElse(IntSymbol)))
             list += UnaryOperation(A_Mov, snd, sndInter)
             val sndInd = Access(pairPointer, Immediate(defaultIntSize), PointerType(None))
-            list += UnaryOperation(A_Malloc, Immediate(defaultIntSize *  2), pairPointer)
-            list += UnaryOperation(A_Load, fstInter, fstInd)
             list += UnaryOperation(A_Load, sndInter, sndInd)
+
             list += UnaryOperation(A_Mov, pairPointer, location)
         }
         case e: Expr => {
