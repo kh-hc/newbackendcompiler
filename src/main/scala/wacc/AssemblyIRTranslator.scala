@@ -240,6 +240,9 @@ class AssemblyIRTranslator {
       }
       translateMove(srcOp, Return, lb)
       translateInbuilt(operator, src, lb)
+      if (operator == A_Read) {
+        translateMove(Return, srcOp, lb)
+      }
     }
     allocator.clearReserve()
   } 
@@ -262,16 +265,6 @@ class AssemblyIRTranslator {
         val pointOp = translateValue(pointer, allocator, lb)
         val accOp = translateValueInto(access, allocator, lb, R2)
         t match{
-          case PointerType(Some(a: IntermediateType)) => {
-            // Arrays
-            usedFunctions.add(OutOfBound)
-            usedFunctions.add(PrintS)
-            translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), Return, lb)
-            lb += BinaryAssInstr(Mov, None, R3, Imm(getElementSize(a)))
-            lb += TernaryAssInstr(Mul, None, Return, Return, R3)
-            lb += BinaryAssInstr(Cmp, None, accOp, Return)
-            lb += BranchLinked(OutOfBound, Some(GE))
-          }
           case PointerType(None) => {
             // Pair
             usedFunctions.add(NullError)
@@ -279,7 +272,16 @@ class AssemblyIRTranslator {
             lb += BinaryAssInstr(Cmp, None, pointOp, Imm(0))
             lb += BranchLinked(NullError, Some(EQ))
           }
-          case _ => 
+          case _ => {
+            // Arrays
+            usedFunctions.add(OutOfBound)
+            usedFunctions.add(PrintS)
+            translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), Return, lb)
+            lb += BinaryAssInstr(Mov, None, R3, Imm(getElementSize(t)))
+            lb += TernaryAssInstr(Mul, None, Return, Return, R3)
+            lb += BinaryAssInstr(Cmp, None, accOp, Return)
+            lb += BranchLinked(OutOfBound, Some(GE))
+          }
         }
         Offset(pointOp, accOp, translateType(t))
       }
@@ -399,11 +401,6 @@ class AssemblyIRTranslator {
     case A_Print => {
       val vtype = getTypeFromValue(v)
       val f = getPrintType(vtype)
-      usedFunctions.add(f)
-      lb += BranchLinked(f, None)
-    }
-    case A_Malloc => {
-      val f = Malloc
       usedFunctions.add(f)
       lb += BranchLinked(f, None)
     }

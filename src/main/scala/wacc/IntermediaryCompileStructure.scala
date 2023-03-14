@@ -68,6 +68,6 @@ object intermediaryCompileStructure {
     case object A_Read extends AssemblyIOperator
     case object A_Free extends AssemblyIOperator
     case object A_Return extends AssemblyIOperator
-    case object A_Malloc extends AssemblyIOperator with AssemblyUOperator
+    case object A_Malloc extends AssemblyUOperator
     case object A_Exit extends AssemblyIOperator
 }
