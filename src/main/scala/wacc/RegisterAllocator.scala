@@ -184,10 +184,6 @@ class RegisterAllocator() {
             popInstr.append(UnaryAssInstr(Pop, None, reg))
         }
         val revPop = popInstr.reverse
-        if (stackSize > 0) {
-            revPop.prepend(TernaryAssInstr(Add, None, SP, SP, IPC))
-            revPop.prepend(BinaryAssInstr(Ldr(Word), None, IPC, Imm(stackSize * 4)))
-        }
         revPop.append(BinaryAssInstr(Mov, None, SP, FP))
         revPop.append(UnaryAssInstr(Pop, None, FP))
         revPop.append(UnaryAssInstr(Pop, None, PC))

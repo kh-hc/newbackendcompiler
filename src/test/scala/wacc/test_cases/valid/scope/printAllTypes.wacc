@@ -58,7 +58,7 @@ begin
                       print "] , [";
                       print b[0];
                       print comma;
-                      print b[1];
+                      print b[1]; 
                       print comma;
                       print b[2];
                       println "] )" # ( [fst x] , [snd x] )
@@ -100,7 +100,7 @@ begin
               end;
               print x[0];
               print comma;
-              print x[1];
+              print x[1]; # Fails here???
               print comma;
               println x[2] # bool[]
             end;

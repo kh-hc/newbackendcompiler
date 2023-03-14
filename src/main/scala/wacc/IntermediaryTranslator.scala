@@ -45,6 +45,7 @@ class IntermediaryTranslator {
     // Returns the size of each type in bytes
     def typeToSize(t: SymbolType): Int = t match {
         case CharSymbol => 1
+        case BoolSymbol => 1
         case _ => 4
     }
 
