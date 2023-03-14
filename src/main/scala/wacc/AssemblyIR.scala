@@ -75,6 +75,7 @@ object assemblyIR {
     case object DivZero extends InBuilt
     case object Exit extends InBuilt
     case object Free extends InBuilt
+    case object FreePair extends InBuilt
     case object Overflow extends InBuilt
     case object NullError extends InBuilt
     case object Malloc extends InBuilt

@@ -56,7 +56,8 @@ object AssemblyGenerator {
         NullError -> "_errNull",
         Exit -> "exit",
         Ret -> "0f",
-        Free -> "_freepair",
+        FreePair -> "_freepair",
+        Free -> "free",
         Malloc -> "malloc"
     )
 
@@ -392,7 +393,7 @@ _errOutOfBounds:
     bl exit
 .ltorg
  """,
-        Free -> """.text
+        FreePair -> """.text
 _freepair:
     push {lr}
     push {r8}

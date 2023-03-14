@@ -259,16 +259,16 @@ class AssemblyIRTranslator {
 
   def translateValue(value: Value, allocator: RegisterAllocator, lb: ListBuffer[AssInstr]): Operand = value match {
       case Access(pointer, access, t) => {
-        val pointOp = translateValueInto(pointer, allocator, lb, R2)
-        val accOp = translateValueInto(access, allocator, lb, R3)
+        val pointOp = translateValue(pointer, allocator, lb)
+        val accOp = translateValueInto(access, allocator, lb, R2)
         t match{
           case PointerType(Some(a: IntermediateType)) => {
             // Arrays
             usedFunctions.add(OutOfBound)
             usedFunctions.add(PrintS)
             translateMove(Offset(pointOp, Imm(-4), translateType(IntType)), Return, lb)
-            lb += BinaryAssInstr(Mov, None, R1, Imm(getElementSize(a)))
-            lb += TernaryAssInstr(Mul, None, Return, Return, R1)
+            lb += BinaryAssInstr(Mov, None, R3, Imm(getElementSize(a)))
+            lb += TernaryAssInstr(Mul, None, Return, Return, R3)
             lb += BinaryAssInstr(Cmp, None, accOp, Return)
             lb += BranchLinked(OutOfBound, Some(GE))
           }
@@ -327,7 +327,7 @@ class AssemblyIRTranslator {
 
   def translateMove(src: Operand, dst: Operand, lb: ListBuffer[AssInstr]) = {
     dst match {
-      case Label(label) => throw new Exception("Warning, you're stupid") 
+      case Label(label) => throw new Exception("") 
       case r: Register => src match {
         case Label(label) => lb += BinaryAssInstr(Ldr(Word), None, dst, src)
         case r: Register => lb += BinaryAssInstr(Mov, None, dst, src)
@@ -338,16 +338,20 @@ class AssemblyIRTranslator {
             lb += BinaryAssInstr(Mov, None, dst, src)
           }
         }
-        case Offset(reg, offset, t) => lb += BinaryAssInstr(Ldr(t), None, dst, src)
+        case Offset(reg, offset, t) => {
+          lb += BinaryAssInstr(Ldr(t), None, dst, src)
+        }
       }
-      case Imm(x) => throw new Exception("Imagine being this stupid")
+      case Imm(x) => throw new Exception("")
       case Offset(reg, offset, t) => {
         src match {
           case Label(label) => {
             lb += BinaryAssInstr(Ldr(t), None, Return, src)
             lb += BinaryAssInstr(Str(t), None, Return, dst)
           }
-          case r: Register => lb += BinaryAssInstr(Str(t), None, src, dst)
+          case r: Register => {
+            lb += BinaryAssInstr(Str(t), None, src, dst)
+          }
           case Imm(x) => {
             if (x > 255 || x < 0) {
               lb += BinaryAssInstr(Ldr(Word), None, Return, src)
@@ -394,14 +398,7 @@ class AssemblyIRTranslator {
     }
     case A_Print => {
       val vtype = getTypeFromValue(v)
-      val f = vtype match {
-        case PointerType(Some(CharType)) => PrintS
-        case PointerType(_) => PrintA
-        case IntType => PrintI
-        case CharType => PrintC
-        case StringType => PrintS
-        case BoolType => PrintB
-      }
+      val f = getPrintType(vtype)
       usedFunctions.add(f)
       lb += BranchLinked(f, None)
     }
@@ -412,14 +409,7 @@ class AssemblyIRTranslator {
     }
     case A_Println => {
       val vtype = getTypeFromValue(v)
-      val f = vtype match {
-        case PointerType(Some(CharType)) => PrintS
-        case PointerType(_) => PrintA
-        case IntType => PrintI
-        case CharType => PrintC
-        case StringType => PrintS
-        case BoolType => PrintB
-      }
+      val f = getPrintType(vtype)
       usedFunctions.add(f)
       usedFunctions.add(PrintLn)
       lb += BranchLinked(f, None)
@@ -431,13 +421,45 @@ class AssemblyIRTranslator {
       lb += BranchLinked(f, None)
     }
     case A_Free => {
-      val f = Free
-      usedFunctions.add(f)
+      val vtype = getTypeFromValue(v)
+      vtype match {
+        case PointerType(Some(_)) => {
+          lb += BinaryAssInstr(Mov, None, R1, Imm(4))
+          lb += TernaryAssInstr(Sub, None, Return, Return, R1)
+          lb += BranchLinked(Free, None)
+        }
+        case _ => {
+          lb += BranchLinked(FreePair, None)
+          usedFunctions.add(FreePair)
+        }
+      }
       usedFunctions.add(NullError)
       usedFunctions.add(PrintS)
-      lb += BranchLinked(f, None)
     }
     case A_Return => lb += Branch("0f", None)
+  }
+
+  def getPrintType(t: IntermediateType): InBuilt = t match {
+    case IntType => PrintI
+    case BoolType => PrintB
+    case CharType => PrintC
+    case PointerType(t) => t match {
+      case None => PrintA
+      case Some(value) => value match {
+        case IntType => PrintI
+        case BoolType => PrintB
+        case CharType => PrintS
+        case PointerType(dest) => dest match {
+          case None => PrintA 
+          case Some(value) => value match {
+            case CharType => PrintS
+            case _ => PrintA
+          }
+        }
+        case StringType => PrintS
+      }
+    }
+    case StringType => PrintS
   }
 
   def escapedChar(c: Char): String = c match {

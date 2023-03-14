@@ -38,7 +38,7 @@ class IntermediaryTranslator {
         case BoolSymbol => BoolType
         case CharSymbol => CharType
         case StringSymbol => StringType
-        case ArraySymbol(t) => PointerType(Some(translateType(t)))
+        case ArraySymbol(t) => PointerType(Some(PointerType(Some(translateType(t)))))
         case a: SymbolType => PointerType(None)
     }
 
@@ -247,6 +247,7 @@ class IntermediaryTranslator {
 
     def translateLValue(lvalue: Lvalue, lb: ListBuffer[Instr]): Value = lvalue match {
         case p: PairElem => getPairToValue(p, lb)
+        case a: ArrayElem => getArrayElemToValue(a, lb)
         case e: Expr => translateExpression(e, lb)
     }
 
@@ -265,6 +266,29 @@ class IntermediaryTranslator {
                 Access(intermediate, pairAccessLocation(p), PointerType(None))
             }
         }
+    }
+
+    def getArrayElemToValue(a: ArrayElem, lb: ListBuffer[Instr]): Value = {
+        val (arrayId, arrayType) = a.symbolTable.get.lookupRecursiveID(a.id.id)
+            var derefCount = 1
+            var access: BaseValue = Stored(arrayId, PointerType(Some(translateType(derefType(arrayType, derefCount)))))
+            var location = Access(access, Immediate(0), PointerType(None)) 
+            // If we are accessing a nested array, update the access positions
+            for (pos <- a.position){
+                val layerType = derefType(arrayType, derefCount)
+                derefCount = derefCount + 1
+                
+                val position = translateExpression(pos, lb)
+                val posInter = getNewIntermediate(IntType)
+                lb += UnaryOperation(A_Mov, position, posInter)
+                lb += BinaryOperation(A_Mul, posInter, Immediate(typeToSize(layerType)), posInter)
+                location = Access(access, posInter, translateType(layerType))
+
+                val dereference = getNewIntermediate(PointerType(Some(translateType(layerType))))
+                lb += UnaryOperation(A_Load, location, dereference)
+                access = dereference
+            }
+            location
     }
 
     def pairAccessLocation(p: PairElem): Immediate = p match {
@@ -291,8 +315,8 @@ class IntermediaryTranslator {
             }
             val arrayPointer = getNewIntermediate(PointerType(Some(arrayTiepe)))
             list += UnaryOperation(A_Malloc, Immediate(defaultIntSize + arrayLocSize * value.length), arrayPointer)
+            list += UnaryOperation(A_Load, Immediate(value.length), Access(arrayPointer, Immediate(0), IntType))
             list += BinaryOperation(A_Add, arrayPointer, Immediate(defaultIntSize), arrayPointer)
-            list += UnaryOperation(A_Load, Immediate(value.length), Access(arrayPointer, Immediate(-1 * arrayLocSize), IntType))
 
             for (i <- 0 to (value.length - 1)) {
                 val indexValue = Access(arrayPointer, Immediate(i * arrayLocSize), translateType(value.head.tiepe.get))
@@ -336,7 +360,7 @@ class IntermediaryTranslator {
         }
         case e: Expr => {
             val x = translateExpression(e, list)
-            list += UnaryOperation(A_Load, x, location)
+            list += UnaryOperation(A_Mov, x, location)
         }
     }
 }
