@@ -448,7 +448,7 @@ class AssemblyIRTranslator {
       case Some(value) => value match {
         case IntType => PrintI
         case BoolType => PrintB
-        case CharType => PrintS
+        case CharType => PrintC
         case PointerType(dest) => dest match {
           case None => PrintA 
           case Some(value) => value match {

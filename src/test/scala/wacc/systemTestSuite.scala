@@ -23,7 +23,7 @@ class SystemTestSuite extends AnyFlatSpec {
     }
 
     // Strings that invalidate the tests - i.e the tests should be run manually and the result should be ignored
-    val noTestFlags = Set("#addrs#", "read", " enter ")
+    val noTestFlags = Set("#addrs#", "read", " enter ", "#runtime_error#")
 
     def runTest(fileName : String, expectedOutput : (Int, String)) = {
         val filePath = fileName

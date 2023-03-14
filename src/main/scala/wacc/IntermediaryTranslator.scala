@@ -274,7 +274,7 @@ class IntermediaryTranslator {
             var access: BaseValue = Stored(arrayId, PointerType(Some(translateType(derefType(arrayType, derefCount)))))
             var location = Access(access, Immediate(0), PointerType(None)) 
             // If we are accessing a nested array, update the access positions
-            for (pos <- a.position){
+            for (pos <- a.position.dropRight(1)){
                 val layerType = derefType(arrayType, derefCount)
                 derefCount = derefCount + 1
                 
@@ -288,7 +288,14 @@ class IntermediaryTranslator {
                 lb += UnaryOperation(A_Load, location, dereference)
                 access = dereference
             }
-            location
+            val layerType = derefType(arrayType, derefCount)
+            derefCount = derefCount + 1
+            
+            val position = translateExpression(a.position.last, lb)
+            val posInter = getNewIntermediate(IntType)
+            lb += UnaryOperation(A_Mov, position, posInter)
+            lb += BinaryOperation(A_Mul, posInter, Immediate(typeToSize(layerType)), posInter)
+            Access(access, posInter, translateType(layerType))
     }
 
     def pairAccessLocation(p: PairElem): Immediate = p match {
